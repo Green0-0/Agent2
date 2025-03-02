@@ -5,6 +5,8 @@ setup(
     version="0.1",
     packages=find_packages(),
     install_requires=[
-        # List dependencies here (e.g., "requests")
+        "sentence-transformers",  
+        "tree-sitter==0.21.3",
+        "tree-sitter-languages"
     ],
 )

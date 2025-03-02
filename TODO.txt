@@ -1,9 +1,0 @@
-- Create Agent class, which contains prompts and tools
-- Work on chat with tool parsing
-- CodeAct, view_lines, search_path, replace_lines, view_element, search_elements, semantic_search, replace_element 
-- Actual tools
-- UI, windows support
-
-- vLLM function calling
-- FuncTools/AgentTools
-- Run tests?
