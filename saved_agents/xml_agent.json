@@ -1,0 +1,35 @@
+{
+  "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.\nYou are acting as an expert coding agent designed to solve github issues without fail.\nYou have access to the following directories:\n{{top_level_files_list}}\nHere is a breakdown of their file types:\n{{filetype_summary}}\n\nTo assist you in your tasks, you have the following tools that you are allowed to use; make sure to wrap them within the {{tools_start}} and {{tools_end}} tokens:\n{{tools_list}}.\n\nHere are some examples of how to use the tools:\n{{tools_examples}}",
+  "init_message": "Below is a github issue that occurs in the files you were given:\n{{task}}\n\nAnalyze the issue and methodically use the tools to implement a solution. Begin by searching for relevant code snippets, then view those snippets, and finally perform your edits. Always think before using a tool (but remember to use the tool), and observe the outputs of a tool and decide on their relevance to fixing the github issue. Please do not include line numbers when writing code. You may only use a single tool per turn.",
+  "tool_formatter": {
+    "type": "XML",
+    "tool_start": "<tool_call>",
+    "tool_end": "</tool_call>"
+  },
+  "tool_settings": {
+    "max_search_result_listings": 15,
+    "max_search_result_lines": 50,
+    "max_view_lines_start": 250,
+    "max_view_lines_end": 250,
+    "number_lines": true,
+    "unindent_inputs": true,
+    "reindent_outputs": true,
+    "match_strict_level": 1,
+    "secretly_save": true,
+    "embeddings_model_path": null,
+    "embeddings_model": null,
+    "minimum_embeddings_similarity": 0.5
+  },
+  "selected_tools": [
+    "replace_element_with",
+    "view_element",
+    "search_elements",
+    "view_file"
+  ],
+  "prompt_templates": {
+    "response_wrapper": "{{tool_response}}",
+    "not_found_error": "Tool '{{tool_name}}' not found. Closest match (if present): {{closest_match}}\nAvailable tools: {{tools_list_name}}",
+    "wrong_args_error": "Invalid arguments for '{{tool_name}}'\nWrong arguments: {{wrong_arguments}}\nMissing parameters: {{missing_args}}\nUnrecognized parameters: {{unrecognized_args}}",
+    "misc_error": "Miscellaneous error in '{{tool_name}}': \n{{error_message}}"
+  }
+}
