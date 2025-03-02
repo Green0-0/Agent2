@@ -86,7 +86,21 @@ class Agent():
 
     def perform_substitutions(self, message: str, task:str = None, tool_name:str = None, closest_match:str = None, wrong_arguments:str = None, missing_args:str = None, unrecognized_args:str = None, error_message:str = None, tool_response:str = None):
         elements_text = []
-        for file, element in self.cached_state.saved_elements:
+        for file_path, element_id in self.cached_state.saved_elements:
+            # Find the element
+            file = next((f for f in self.cached_state.workspace if f.path.lower() == file_path.lower()), None)
+            if not file:
+                continue
+            all_elements = []
+            stack = list(file.elements)
+            while stack:
+                element = stack.pop()
+                all_elements.append(element)
+                stack.extend(element.elements)
+            
+            element = next((e for e in all_elements if e.identifier.lower() == element_id.lower()), None)
+            if not element:
+                continue
             elements_text += [file.path + ":" + element.identifier]
             elements_text += [element.to_string()]
         elements_text = "\n".join(elements_text)

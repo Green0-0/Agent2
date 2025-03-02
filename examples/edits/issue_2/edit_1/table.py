@@ -681,10 +681,6 @@ class Table:
                 new_dt = np.dtype(col_descr[1]).newbyteorder("=")
                 col_descr = (col_descr[0], new_dt, col_descr[2])
 
-            # Handle zero-sized string columns
-            if col_descr[1].kind == 'S' and col_descr[1].itemsize == 0:
-                col_descr = (col_descr[0], 'U1', col_descr[2])
-
             dtype.append(col_descr)
 
         data = empty_init(len(self), dtype=dtype)
@@ -4358,7 +4354,11 @@ class QTable(Table):
             # Quantity subclasses identified in the unit (such as u.mag()).
             q_cls = Masked(Quantity) if isinstance(col, MaskedColumn) else Quantity
             try:
-                qcol = q_cls(col.data, col.unit, copy=COPY_IF_NEEDED, subok=True)
+                if col.dtype.kind == 'S' and col.dtype.itemsize == 0:
+                    # Handle zero-sized string columns
+                    qcol = q_cls(np.array([], dtype=col.dtype), col.unit, copy=COPY_IF_NEEDED, subok=True)
+                else:
+                    qcol = q_cls(col.data, col.unit, copy=COPY_IF_NEEDED, subok=True)
             except Exception as exc:
                 warnings.warn(
                     f"column {col.info.name} has a unit but is kept as "

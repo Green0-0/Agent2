@@ -162,8 +162,8 @@ def view_element(state: AgentState, settings: ToolSettings, path: str, identifie
         else:
             raise ValueError(f"Element {identifier} not found in file {path}. Did you mean {element.identifier}?")
     if settings.secretly_save:
-        if (file, element) not in state.saved_elements:
-            state.saved_elements.append((file, element))
+        if (file.path, element.identifier) not in state.saved_elements:
+            state.saved_elements.append((file.path, element.identifier))
 
     content = element.to_string(number_lines=settings.number_lines, unindent_text=settings.unindent_inputs)
     lines = content.splitlines()

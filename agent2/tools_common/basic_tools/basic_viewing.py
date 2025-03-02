@@ -116,8 +116,8 @@ def view_lines(state: AgentState, settings: ToolSettings, line_start: int, line_
     if settings.secretly_save:
         new_elements = get_overlaps(line_start, line_end, file)
         for element in new_elements:
-            if (file, element) not in state.saved_elements: 
-                state.saved_elements.append((file, element))
+            if (file.path, element.identifier) not in state.saved_elements: 
+                state.saved_elements.append((file.path, element.identifier))
     content = file.updated_content
     if settings.unindent_inputs:
         content = unindent(content)

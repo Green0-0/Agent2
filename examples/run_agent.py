@@ -334,7 +334,7 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
         print(f"Completed Issue #{issue_num}")
         print("Accessed elements:")
         for file, element in agent.cached_state.saved_elements:
-            print(file.path + ":" + element.identifier)
+            print(file + ":" + element)
         print("Testing rating...")
         diffs = []
         for f in agent.cached_state.workspace:
