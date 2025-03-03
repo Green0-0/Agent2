@@ -209,6 +209,8 @@ class Agent():
                 return AgentResponse(self.cached_state.chat.toOAI(), None, None, None, "```output\n" + execution_result + "```")
             except Exception as e:
                 error_output = "```output\n" + str(e) + "\n```"
+                if "def" in tool_call or "class" in tool_call:
+                    error_output += "\nPlease do not use tool call code blocks for anything besides using tools. If you want to modify a piece of code, output a code block and then use replace_element, which will automatically reference the previous code block."
                 self.cached_state.chat.append(error_output)
                 print("==== ERROR ====")
                 print(error_output)
