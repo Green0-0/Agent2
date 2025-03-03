@@ -49,7 +49,7 @@ def parse_python_elements(code: str) -> List[Element]:
             current_node = current_node.parent
         if element_node is not None:
             # Use code_bytes here
-            docstring = code_bytes[node.start_byte:node.end_byte].decode('utf8', errors='ignore').strip()
+            docstring = code_bytes[node.start_byte:node.end_byte].decode('utf8', errors='ignore')
             element_to_docstring[element_node] = docstring
 
     def process_element(node: Node, parent_identifier: str = '') -> Optional[Element]:
@@ -82,6 +82,19 @@ def parse_python_elements(code: str) -> List[Element]:
         # Use code_bytes for content
         content = code_bytes[start_byte:end_byte].decode('utf8', errors='ignore')
 
+        content = code_bytes[start_byte:end_byte].decode('utf8', errors='ignore')
+    
+        # NEW CODE: Fix first line indentation
+        original_lines = code.split('\n')
+        if line_start < len(original_lines):
+            original_line = original_lines[line_start]
+            indent = original_line[:len(original_line)-len(original_line.lstrip())]
+            content_lines = content.split('\n')
+            if content_lines:
+                # Reindent first line
+                content_lines[0] = indent + content_lines[0].lstrip()
+                content = '\n'.join(content_lines)
+
         docstring = element_to_docstring.get(actual_node, '')
 
         elements = []
@@ -92,7 +105,6 @@ def parse_python_elements(code: str) -> List[Element]:
                     elem = process_element(child, identifier)
                     if elem:
                         elements.append(elem)
-
         return Element(
             identifier=identifier,
             content=content,

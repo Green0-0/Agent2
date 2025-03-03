@@ -29,9 +29,10 @@ class Element:
         self.elements = elements
 
     def to_string(self, unindent_text = True, number_lines = True):
+        cont = self.content
         if unindent_text:
-            content = unindent(self.content)
-        lines = content.split('\n')
+            cont = unindent(cont)
+        lines = cont.split('\n')
         if number_lines:
             lines = [f"{i} {line}" for i, line in enumerate(lines, start=self.line_start)]
         mask = [False] * len(lines)

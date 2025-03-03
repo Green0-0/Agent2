@@ -71,8 +71,10 @@ class TestJSONToString:
 
 class TestToolToString:
     def test_schema_structure(self, formatter, sample_tool):
-        schema_str = formatter.tool_to_string(sample_tool)
-        schema = json.loads(schema_str)
+        temp = formatter.tool_to_string(sample_tool)
+        temp = temp.split("<tool_call>")[1]
+        temp = temp.split("</tool_call>")[0].strip()
+        schema = json.loads(temp)
         print(schema)
         
         assert schema["type"] == "function"
@@ -88,8 +90,10 @@ class TestToolToString:
         def test_tool(state, req: str, opt: int = 0):
             """Test tool"""
             pass
-            
-        schema = json.loads(formatter.tool_to_string(Tool(test_tool)))
+        temp = formatter.tool_to_string(Tool(test_tool))
+        temp = temp.split("<tool_call>")[1]
+        temp = temp.split("</tool_call>")[0].strip()
+        schema = json.loads(temp)
         params = schema["function"]["parameters"]
         
         assert "req" in params["required"]
@@ -106,8 +110,10 @@ class TestToolToString:
                     d: dict):
             """Type test tool"""
             pass
-            
-        schema = json.loads(formatter.tool_to_string(Tool(type_tool)))
+        temp = formatter.tool_to_string(Tool(type_tool))
+        temp = temp.split("<tool_call>")[1]
+        temp = temp.split("</tool_call>")[0].strip()
+        schema = json.loads(temp)
         props = schema["function"]["parameters"]["properties"]
         
         assert props["s"]["type"] == "string"
@@ -125,8 +131,10 @@ def test_full_roundtrip(formatter, sample_json):
 
 def test_tool_validation_roundtrip(formatter, sample_tool):
     # Tool -> Schema -> Validation
-    schema_str = formatter.tool_to_string(sample_tool)
-    schema = json.loads(schema_str)
+    temp = formatter.tool_to_string(sample_tool)
+    temp = temp.split("<tool_call>")[1]
+    temp = temp.split("</tool_call>")[0].strip()
+    schema = json.loads(temp)
     
     valid_call = {
         "name": "file_processor",

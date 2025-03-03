@@ -107,10 +107,12 @@ class TestToolToString:
     def test_basic_conversion(self, formatter, sample_tool):
         result = formatter.tool_to_string(sample_tool)
         expected = (
+            "# Tool Use\n"
             "## Name: file_processor\n"
             "### Description: Process files in the system\n"
             "### path (str, required): File path to process\n"
-            "### timeout (int, optional): Processing timeout in seconds"
+            "### timeout (int, optional): Processing timeout in seconds\n"
+            "# Tool End"
         )
         assert result == expected
 

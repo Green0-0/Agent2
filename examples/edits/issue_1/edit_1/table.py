@@ -909,20 +909,51 @@ class Table:
         self._set_column_attribute("unit", units)
         self._set_column_attribute("description", descriptions)
 
-    if value is not np.ma.masked and value is not None:
-        col = self[name]
-        if attr == "unit" and isinstance(col, Quantity):
-            # Update the Quantity unit in-place
-            col <<= value
-        else:
-            setattr(col.info, attr, value)
-    else:
-        col = self[name]
-        if attr == "unit" and isinstance(col, Quantity):
-            # Update the Quantity unit in-place
-            col <<= value
-        else:
-            setattr(col.info, attr, value)
+    def _set_column_attribute(self, attr, values):
+        """Set ``attr`` for columns to ``values``, which can be either a dict (keyed by column
+        name) or a dict of name: value pairs.  This is used for handling the ``units`` and
+        ``descriptions`` kwargs to ``__init__``.
+        """
+        if not values:
+            return
+
+        if isinstance(values, Row):
+            # For a Row object transform to an equivalent dict.
+            values = {name: values[name] for name in values.colnames}
+
+        if not isinstance(values, Mapping):
+            # If not a dict map, assume iterable and map to dict if the right length
+            if len(values) != len(self.columns):
+                raise ValueError(
+                    f"sequence of {attr} values must match number of columns"
+                )
+            values = dict(zip(self.colnames, values))
+
+        for name, value in values.items():
+            if name not in self.columns:
+                raise ValueError(
+                    f"invalid column name {name} for setting {attr} attribute"
+                )
+
+            # Special case: ignore unit if it is an empty or blank string
+            if attr == "unit" and isinstance(value, str):
+                if value.strip() == "":
+                    value = None
+
+            if value is not None and not isinstance(value, Unit):
+                col = self[name]
+                if attr == "unit" and isinstance(col, Quantity):
+                    # Update the Quantity unit in-place
+                    col <<= value
+                else:
+                    setattr(col.info, attr, value)
+            else:
+                col = self[name]
+                if attr == "unit" and isinstance(col, Quantity):
+                    # Update the Quantity unit in-place
+                    col <<= value
+                else:
+                    setattr(col.info, attr, value)
 
     def __getstate__(self):
         columns = OrderedDict(
