@@ -3,8 +3,8 @@
   "init_message": "Here are a list of elements within some files:\n{{elements_saved_text}}\nHere is a github issue:\n{{task}}\nHere are a list of edits made for the issue:\n{{diffs}}\nThink of what possible reasons for the issue.  Determine what the modifications appear to do and the likelihood they would fix the issue. At the very end of your output, output one of the following: VERY_UNLIKELY, UNLIKELY, POSSIBLE, LIKELY, VERY_LIKELY representing how likely it is that the modifications will fix the issue. Do not output anything else after outputting the key for the likelihood.",
   "tool_formatter": {
     "type": "JSON",
-    "tool_start": "<tool_call>",
-    "tool_end": "</tool_call>"
+    "tool_start": "<tool>",
+    "tool_end": "</tool>"
   },
   "tool_settings": {
     "max_search_result_listings": 1,

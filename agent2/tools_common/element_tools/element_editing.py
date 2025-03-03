@@ -55,7 +55,7 @@ def replace_element_with(state: AgentState, settings: ToolSettings, path: str, i
     line_end = line_start + len(element.content.splitlines())
 
     removed_line_numbers = unenumerate_lines(replacement)
-    if removed_line_numbers[0] > 0.9 * len(removed_line_numbers[2]):
+    if removed_line_numbers[0] > 0.6 * len(removed_line_numbers[1]):
         replacement = removed_line_numbers[2]
     replacement = remove_codeblock(replacement)
 

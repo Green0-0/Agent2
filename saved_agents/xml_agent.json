@@ -3,8 +3,8 @@
   "init_message": "Below is a github issue that occurs in the files you were given:\n{{task}}\n\nAnalyze the issue and methodically use the tools to implement a solution. Begin by searching for relevant code snippets, then view those snippets, and finally perform your edits. Always think before using a tool (but remember to use the tool), and observe the outputs of a tool and decide on their relevance to fixing the github issue. Please do not include line numbers when writing code. You may only use a single tool per turn.",
   "tool_formatter": {
     "type": "XML",
-    "tool_start": "<tool_call>",
-    "tool_end": "</tool_call>"
+    "tool_start": "<tool>",
+    "tool_end": "</tool>"
   },
   "tool_settings": {
     "max_search_result_listings": 15,

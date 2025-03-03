@@ -81,7 +81,7 @@ class JSONToolFormatter(ToolFormatter):
             }
         }
 
-        return json.dumps(function_schema)
+        return f"{self.tool_start}\n" + json.dumps(function_schema) + f"\n{self.tool_end}"
 
 class XMLToolFormatter(ToolFormatter):
     def string_to_json(self, input: str) -> dict:
@@ -192,7 +192,7 @@ class XMLToolFormatter(ToolFormatter):
             content = f"Optional ({type_}): {desc}" if desc else f"Optional: ({type_})"
             xml_lines.append(f"<{name}>{content}</{name}>")
         
-        return '\n'.join(xml_lines)
+        return f"{self.tool_start}\n" + '\n'.join(xml_lines) + f"\n{self.tool_end}"
 
 import inspect
 from agent2.formatting.autoformatter import remove_codeblock
@@ -206,7 +206,7 @@ class CodeACTToolFormatter(ToolFormatter):
         index1 = tool_signature.find("settings")
         index2 = tool_signature.find(",", index1)
         tool_signature = "def " + tool.name + "(" + tool_signature[index2 + 1:].strip()
-        return "```python\n" + tool_signature + "\n\"\"\"\n" + tool_doc + "\n\"\"\"\n```"
+        return f"{self.tool_start}\n```python\n" + tool_signature + "\n\"\"\"\n" + tool_doc + "\n\"\"\"\n```\n" + self.tool_end
 
     def json_to_string(self, j: dict):
         """Convert JSON tool call to CodeACT format (Python function call syntax).
@@ -331,7 +331,7 @@ class MarkdownToolFormatter(ToolFormatter):
         for name, desc, type_ in tool.optional_args:
             lines.append(f"### {name} ({type_}, optional): {desc}")
         
-        return '\n'.join(lines)
+        return f"{self.tool_start}\n" + '\n'.join(lines) + f"\n{self.tool_end}"
 
     def parse_value(self, s: str):
         """Convert string to appropriate type (int, float, bool, or str)."""

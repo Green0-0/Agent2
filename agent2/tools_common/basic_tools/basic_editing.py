@@ -38,7 +38,7 @@ def replace_lines_with(state: AgentState, settings: ToolSettings, path: str, lin
     if not file:
         raise ValueError(f"File {path} not found")
     removed_line_numbers = unenumerate_lines(replacement)
-    if removed_line_numbers[0] > 0.9 * len(removed_line_numbers[2]):
+    if removed_line_numbers[0] > 0.6 * len(removed_line_numbers[1]):
         replacement = removed_line_numbers[2]
     replacement = remove_codeblock(replacement)
     content = file.updated_content
