@@ -2948,21 +2948,26 @@ class Table:
         """
         for col in self.itercols():
             if col.dtype.kind == in_kind:
-                try:
-                    # This requires ASCII and is faster by a factor of up to ~8, so
-                    # try that first.
-                    newcol = col.__class__(col, dtype=out_kind)
-                except (UnicodeEncodeError, UnicodeDecodeError):
-                    newcol = col.__class__(encode_decode_func(col, "utf-8"))
+                # Check if the column has a zero-sized string dtype
+                if col.dtype.itemsize == 0:
+                    # Handle zero-sized string column appropriately
+                    newcol = col.__class__(col, dtype=f'|S1')  # Convert to a non-zero-sized type
+                else:
+                    try:
+                        # This requires ASCII and is faster by a factor of up to ~8, so
+                        # try that first.
+                        newcol = col.__class__(col, dtype=out_kind)
+                    except (UnicodeEncodeError, UnicodeDecodeError):
+                        newcol = col.__class__(encode_decode_func(col, "utf-8"))
 
-                    # Quasi-manually copy info attributes.  Unfortunately
-                    # DataInfo.__set__ does not do the right thing in this case
-                    # so newcol.info = col.info does not get the old info attributes.
-                    for attr in (
-                        col.info.attr_names - col.info._attrs_no_copy - {"dtype"}
-                    ):
-                        value = deepcopy(getattr(col.info, attr))
-                        setattr(newcol.info, attr, value)
+                        # Quasi-manually copy info attributes.  Unfortunately
+                        # DataInfo.__set__ does not do the right thing in this case
+                        # so newcol.info = col.info does not get the old info attributes.
+                        for attr in (
+                            col.info.attr_names - col.info._attrs_no_copy - {"dtype"}
+                        ):
+                            value = deepcopy(getattr(col.info, attr))
+                            setattr(newcol.info, attr, value)
 
                 self[col.name] = newcol
 
@@ -4354,11 +4359,7 @@ class QTable(Table):
             # Quantity subclasses identified in the unit (such as u.mag()).
             q_cls = Masked(Quantity) if isinstance(col, MaskedColumn) else Quantity
             try:
-                if col.dtype.kind == 'S' and col.dtype.itemsize == 0:
-                    # Handle zero-sized string columns
-                    qcol = q_cls(np.array([], dtype=col.dtype), col.unit, copy=COPY_IF_NEEDED, subok=True)
-                else:
-                    qcol = q_cls(col.data, col.unit, copy=COPY_IF_NEEDED, subok=True)
+                qcol = q_cls(col.data, col.unit, copy=COPY_IF_NEEDED, subok=True)
             except Exception as exc:
                 warnings.warn(
                     f"column {col.info.name} has a unit but is kept as "

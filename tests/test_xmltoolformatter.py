@@ -93,7 +93,7 @@ class TestToolToString:
             "<name>file_processor</name>\n"
             "<description>Process files in the system</description>\n"
             "<path>Required (str): File path to process</path>\n"
-            "<timeout>Optional (int): Processing timeout in seconds</timeout>\n",
+            "<timeout>Optional (int): Processing timeout in seconds</timeout>\n"
             "</tool_call>"
         )
         assert result == expected
