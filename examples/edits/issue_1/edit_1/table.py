@@ -909,7 +909,7 @@ class Table:
         self._set_column_attribute("unit", units)
         self._set_column_attribute("description", descriptions)
 
-    if value not in (np.ma.masked, None):
+    if value is not np.ma.masked and value is not None:
         col = self[name]
         if attr == "unit" and isinstance(col, Quantity):
             # Update the Quantity unit in-place
