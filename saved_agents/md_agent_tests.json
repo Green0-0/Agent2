@@ -1,0 +1,33 @@
+{
+  "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.\n\nHere is the list of folders at the root level that you have access to:\n{{top_level_files_list}}\n\nAnd a summary of file types in the project:\n{{filetype_summary}}\n\nTo assist you in your tasks, you have the following tools that you are allowed to use; make sure to wrap them within the {{tools_start}} and {{tools_end}} tokens:\n{{tools_list}}.\n\nHere are some examples of how to use the tools:\n{{tools_examples}}",
+  "init_message": "Below is a github issue that occurs in the files you were given:\n{{task}}\n\nYour goal is not to solve the issue, but to view and save test cases that should be ran to check if the issue works, or related test cases in general. It is not sufficient to just search the relevant test cases, to save a test case, you must use the view_element tool on it. After viewing 3-4 tests, output a short summary of what you've done and stop searching; you do not need to run any tests or write new ones. Start searcing for tests.",
+  "tool_formatter": {
+    "type": "Markdown",
+    "tool_start": "# Tool Use",
+    "tool_end": "# Tool End"
+  },
+  "tool_settings": {
+    "max_search_result_listings": 15,
+    "max_search_result_lines": 50,
+    "max_view_lines_start": 200,
+    "max_view_lines_end": 200,
+    "number_lines": true,
+    "unindent_inputs": true,
+    "reindent_outputs": true,
+    "match_strict_level": 1,
+    "secretly_save": true,
+    "embeddings_model_path": null,
+    "embeddings_model": null,
+    "minimum_embeddings_similarity": 0.5
+  },
+  "selected_tools": [
+    "view_element",
+    "search_elements"
+  ],
+  "prompt_templates": {
+    "response_wrapper": "{{tool_response}}",
+    "not_found_error": "Tool '{{tool_name}}' not found. Closest match (if present): {{closest_match}}\nAvailable tools: {{tools_list_name}}",
+    "wrong_args_error": "Invalid arguments for '{{tool_name}}'\nWrong arguments: {{wrong_arguments}}\nMissing parameters: {{missing_args}}\nUnrecognized parameters: {{unrecognized_args}}",
+    "misc_error": "Miscellaneous error in '{{tool_name}}': \n{{error_message}}"
+  }
+}

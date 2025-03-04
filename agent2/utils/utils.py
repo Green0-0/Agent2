@@ -137,3 +137,41 @@ def get_rating_keys(s):
     
     # If no terms found in either case
     return 0
+
+def get_first_import_block(code):
+    lines = code.split('\n')
+    block_lines = []
+    in_block = False
+    open_parens = 0
+    line_continuation = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if not in_block:
+            if stripped == '' or stripped.startswith('#'):
+                continue
+            elif 'import' in line:
+                in_block = True
+                block_lines.append(line)
+                open_parens += line.count('(') - line.count(')')
+                line_continuation = line.rstrip().endswith('\\')
+        else:
+            is_comment_or_empty = stripped == '' or stripped.startswith('#')
+            if is_comment_or_empty:
+                block_lines.append(line)
+                continue
+
+            if line_continuation or open_parens > 0:
+                block_lines.append(line)
+                open_parens += line.count('(') - line.count(')')
+                line_continuation = line.rstrip().endswith('\\')
+            else:
+                if 'import' in line:
+                    block_lines.append(line)
+                    open_parens += line.count('(') - line.count(')')
+                    line_continuation = line.rstrip().endswith('\\')
+                else:
+                    break
+
+    return '\n'.join(block_lines)

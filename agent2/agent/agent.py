@@ -7,6 +7,7 @@ from agent2.file import File
 from typing import List
 
 from agent2.agent.tool_formatter import CodeACTToolFormatter
+from agent2.utils.utils import get_first_import_block
 from agent2.agent.smolagents.local_python_executor import LocalPythonInterpreter
 import functools
 
@@ -38,6 +39,8 @@ class Agent():
     frozen = False
 
     bound_tool = None
+
+    get_import_block_saved = False
 
     def __init__(self, system_prompt: str, init_message: str, tools_list: List[Tool], tool_formatter: ToolFormatter, tools_settings: ToolSettings, tool_response_wrapper: str, tool_not_found_error_wrapper: str, tool_wrong_arguments_error_wrapper: str, tool_miscellaneous_error_wrapper: str):
         """
@@ -78,6 +81,8 @@ class Agent():
         self.tool_formatter = tool_formatter
         self.cached_state = None
 
+        self.get_import_block_saved = False
+
         self.frozen = False
 
         self.tool_response_wrapper = tool_response_wrapper
@@ -104,6 +109,8 @@ class Agent():
             if not element:
                 continue
             elements_text += [file.path + ":" + element.identifier]
+            if self.get_import_block_saved:
+                elements_text += [get_first_import_block(file.original_content)]
             elements_text += [element.to_string()]
         elements_text = "\n".join(elements_text)
         
