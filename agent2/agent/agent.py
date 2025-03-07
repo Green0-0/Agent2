@@ -176,9 +176,9 @@ class Agent():
         self.cached_state.chat = Chat(system_prompt_final, final_init_message)
         self.bound_tool = None
         print("==== SYSTEM PROMPT: ====")
-        print(system_prompt_final)
+        print(system_prompt_final[-1000:])
         print("==== INIT MESSAGE: ====")
-        print(final_init_message)
+        print(final_init_message[-1000:])
         self.frozen = False
         return AgentResponse(self.cached_state.chat.toOAI(), None, None, None)
     

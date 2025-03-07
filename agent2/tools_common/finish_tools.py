@@ -10,8 +10,12 @@ from agent2.formatting.autoformatter import reindent, unenumerate_lines, remove_
 
 def apply_code_edits_workplace(agentResponse: AgentResponse, agentState: AgentState):
     warning = False
-    code_blocks = extract_all_code_blocks(agentResponse.done)
+    code_source = agentResponse.done
+    if "</think>" in agentResponse.done:
+        code_source = agentResponse.done.split("</think>")[1]
+    code_blocks = extract_all_code_blocks(code_source)
     for code_block in code_blocks:
+        print("Found:")
         print(code_block[0:100])
         lines = code_block.split('\n')
         if not lines or not lines[0].startswith('#'):
