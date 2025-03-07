@@ -42,6 +42,8 @@ class Agent():
 
     get_import_block_saved = False
 
+    finish_tools = []
+
     def __init__(self, system_prompt: str, init_message: str, tools_list: List[Tool], tool_formatter: ToolFormatter, tools_settings: ToolSettings, tool_response_wrapper: str, tool_not_found_error_wrapper: str, tool_wrong_arguments_error_wrapper: str, tool_miscellaneous_error_wrapper: str):
         """
         All messages:
@@ -89,6 +91,8 @@ class Agent():
         self.tool_not_found_error_wrapper = tool_not_found_error_wrapper
         self.tool_wrong_arguments_error_wrapper = tool_wrong_arguments_error_wrapper
         self.tool_miscellaneous_error_wrapper = tool_miscellaneous_error_wrapper
+
+        self.finish_tools = []
         pass
 
     def perform_substitutions(self, message: str, task:str = None, tool_name:str = None, closest_match:str = None, wrong_arguments:str = None, missing_args:str = None, unrecognized_args:str = None, error_message:str = None, tool_response:str = None):
@@ -213,7 +217,10 @@ class Agent():
             print("==== FINISHED: ====")
             print(response_parts[0].strip())
             self.cached_state.chat.append(response_parts[0].strip())
-            return AgentResponse(self.cached_state.chat.toOAI(), None, None, response_parts[0].strip())
+            origresponse = AgentResponse(self.cached_state.chat.toOAI(), None, None, response_parts[0].strip())
+            for finish_tool in self.finish_tools:
+                finish_tool(origresponse, self.cached_state)
+            return origresponse
         response_parts[1] = response_parts[1].strip()
         self.cached_state.chat.append(response_trimmed + self.tool_formatter.tool_end)
         print("==== RESPONSE: ====")

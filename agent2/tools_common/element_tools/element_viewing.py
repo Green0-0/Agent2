@@ -118,7 +118,7 @@ def search_elements(state: AgentState, settings: ToolSettings, regex: str, path:
 
 def view_element(state: AgentState, settings: ToolSettings, path: str, identifier: str):
     """
-    View an element in a file. Make sure to specify the element path exactly; if you want to view the bar method within the foo class, use foo.bar.
+    View an element in a file. Make sure to specify the element path exactly; if you want to view the bar method within the foo class, use foo.bar. You should always view an element that you intend to modify, before you modify it.
     
     Args:
         identifier: Element identifier to view

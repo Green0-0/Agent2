@@ -221,52 +221,49 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
         print("Loaded files...")
         
         # Load solver agent
-        agent = load_agent_from_json("saved_agents/codeact_agent.json", tools)
+        agent = load_agent_from_json("saved_agents/search_md_agent.json", tools)
         
         # Start agent with current task
         agent.start(task=issue, files=project_files)
         
         # Agent interaction loop
+        ii = 0
+        max_ii = 10
         while True:
+            ii += 1
+            if ii > max_ii:
+                break
             oai_messages = agent.cached_state.chat.toOAI()
-            llm_response = get_completion(oai_messages, model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+            #llm_response = get_completion(oai_messages, model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+            llm_response = get_completion(oai_messages, model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
             if not llm_response:
                 break
             response = agent.step(llm_response)
             if response.done:
                 break
 
-        # Save modified files
-        edit_count = 0
-        for file in agent.cached_state.workspace:
-            if file.original_content != file.updated_content:
-                edit_count += 1
-                edit_dir = f"examples/edits/issue_{issue_num}/edit_{edit_count}"
-                os.makedirs(edit_dir, exist_ok=True)
-                
-                # Write modified file
-                output_path = os.path.join(edit_dir, os.path.basename(file.path))
-                with open(output_path, "w") as f:
-                    f.write(file.updated_content)
-                
-                # Print diff
-                print(f"\nEdit #{edit_count} in {file.path}:")
-                print(file.diff("astropy"))
-
         print(f"Completed Issue #{issue_num}")
         print("Accessed elements:")
         for file, element in agent.cached_state.saved_elements:
             print(file + ":" + element)
-        print("Testing rating...")
+        print("Testing coding...")
+        from agent2.tools_common.finish_tools import apply_code_edits_workplace
+        agent_coder = load_agent_from_json("saved_agents/qwq_code_agent.json", tools)
+        agent_coder.finish_tools = [apply_code_edits_workplace]
+        agent_coder.start(task=issue, files=project_files, copy_saved_elements=agent.cached_state.saved_elements)
+        #agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+        agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
+        agent_coder.step(agent_code_response)        
+
         diffs = []
-        for f in agent.cached_state.workspace:
+        for f in agent_coder.cached_state.workspace:
             if f.original_content != f.updated_content:
                 diffs += [f.diff(None)]
         diffs = "\n".join(diffs)
         print(diffs)                
         
         # Load rating agent
-        rating_agent = load_agent_from_json("saved_agents/rater_agent.json", tools)
+        rating_agent = load_agent_from_json("saved_agents/qwq_rater_agent.json", tools)
         
         # Replace placeholders in the rating agent's init message
         rating_agent.init_message = (
@@ -277,7 +274,11 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
         # Start agent with current task
         rating_agent.start(task=issue, files=project_files, copy_saved_elements=agent.cached_state.saved_elements)
         # Get response, parse response
-        rating_llm_response = get_completion((rating_agent.cached_state.chat.toOAI()), model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+        #rating_llm_response = get_completion((rating_agent.cached_state.chat.toOAI()), model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+        rating_llm_response = get_completion(rating_agent.cached_state.chat.toOAI(), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
+
+        # agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
+
         print(rating_llm_response)
         rating_llm_score = get_rating_keys(rating_llm_response)
         print(rating_llm_score)

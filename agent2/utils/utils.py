@@ -6,6 +6,21 @@ import time
 import os
 import re
 
+from typing import List
+
+def extract_all_code_blocks(text: str) -> List[str]:
+    code_blocks = []
+    parts = text.split('```')
+    for i in range(1, len(parts), 2):
+        cb_content = parts[i]
+        split_content = cb_content.split('\n', 1)
+        if len(split_content) > 1:
+            code = split_content[1]
+        else:
+            code = ''
+        code_blocks.append(code)
+    return code_blocks
+
 def get_overlaps(line_start: int, line_end: int, file: File) -> List[Element]:
     overlapping_elements = []
     

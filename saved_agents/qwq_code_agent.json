@@ -1,0 +1,30 @@
+{
+  "system_prompt": "",
+  "init_message": "Here is a github issue\n{{task}}\nHere are a list of elements within the repo that have been identified as the source of the issue:\n{{elements_saved_text}}\nDetermine the source(s) of the issue, and output a replacement code block for each element that needs to be replaced.\nWhen outputting a code block, put the element identifier within the code block as the first comment. The element identifier must be EXACTLY as it is listed, ie: folder/classes.py:MyClass.MyMethod, and it must be the first comment in the code block. You may output multiple code blocks like this, ie:\n```python\n# folder1/classes.py:MyClass.MyMethod\ndef MyMethod():\n    # Replacement code here```\n```python\n# folder2/things.py:SecondMethod\ndef SecondMethod():\n    # Replacement code here```\nBut you do not need to output code blocks for things you do not edit. Try to avoid editing classes if you can help it; edit specific methods. Do not include the line numbers in your code.\nIf the source of the issue does not occur within the elements you were given, do not output any code blocks, and summarize where the issue actually occurs.",
+  "tool_formatter": {
+    "type": "JSON",
+    "tool_start": "{{tools_start}}",
+    "tool_end": "{{tools_end}}"
+  },
+  "tool_settings": {
+    "max_search_result_listings": 1,
+    "max_search_result_lines": 1,
+    "max_view_lines_start": 1,
+    "max_view_lines_end": 1,
+    "number_lines": false,
+    "unindent_inputs": false,
+    "reindent_outputs": false,
+    "match_strict_level": 1,
+    "secretly_save": false,
+    "embeddings_model_path": null,
+    "embeddings_model": null,
+    "minimum_embeddings_similarity": 0.5
+  },
+  "selected_tools": [],
+  "prompt_templates": {
+    "response_wrapper": "",
+    "not_found_error": "",
+    "wrong_args_error": "",
+    "misc_error": ""
+  }
+}
