@@ -97,7 +97,10 @@ def dtype_info_name(dtype):
     dtype_info_name : str
         String name of ``dtype``
     """
-    dtype = np.dtype(dtype)
+    try:
+        dtype = np.dtype(dtype)
+    except ValueError:
+        return "invalid dtype"
     if dtype.names is not None:
         info_names = ", ".join(dtype_info_name(dt[0]) for dt in dtype.fields.values())
         return f"({info_names})"
@@ -109,10 +112,7 @@ def dtype_info_name(dtype):
     if dtype.kind in ("S", "U"):
         type_name = "bytes" if dtype.kind == "S" else "str"
         length = re.search(r"(\d+)", dtype.str).group(1)
-        if length == '0':
-            out = type_name + '0'
-        else:
-            out = type_name + length
+        out = type_name + length
     else:
         out = dtype.name
 

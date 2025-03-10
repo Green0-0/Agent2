@@ -6,7 +6,7 @@ from agent2.agent.agent_state import AgentState
 from agent2.formatting.autoformatter import reindent, unenumerate_lines, remove_codeblock, enumerate_lines, unindent
 from agent2.formatting.lookup import lookup_text
 
-def replace_element_with(state: AgentState, settings: ToolSettings, path: str, identifier: str, replacement: str):
+def replace_element(state: AgentState, settings: ToolSettings, path: str, identifier: str, replacement: str):
     """
     Replace an element and all its subelements with a replacement string. Always edit the innermost elements and not outer elements. Replace one element at a time. Make sure to specify the element path exactly, and the entirety of the replacement code, otherwise it will be cut off; if you want to view the bar method within the foo class, use foo.bar.
     
@@ -21,7 +21,7 @@ def replace_element_with(state: AgentState, settings: ToolSettings, path: str, i
     Example:
         Replace element auth in auth.py with ```python\ndef auth():\n\tpass\n```
     Tool Call:
-        {"name": "replace_element_with", "arguments": {"path": "src/auth/auth.py", "identifier": "auth", "replacement": "def auth():\\n\\tpass"}}
+        {"name": "replace_element", "arguments": {"path": "src/auth/auth.py", "identifier": "auth", "replacement": "def auth():\\n\\tpass"}}
     """
     if "\\" in path:
         path = path.replace("\\", "/")
@@ -80,28 +80,6 @@ def replace_element_with(state: AgentState, settings: ToolSettings, path: str, i
     file.updated_content = new_content
     file.update_elements()
     return ("Success:\n" + file.diff(None), None, None)
-
-
-def replace_element(state: AgentState, settings: ToolSettings, path: str, identifier: str):
-    """
-    Replace an element and all its subelements with the last code block you output. Always edit the innermost elements and not outer elements. Replace one element at a time; output one code block for each element then immediately replace it. Make sure to specify the element path exactly, and the entirety of the replacement code, otherwise it will be cut off; if you want to view the bar method within the foo class, use foo.bar.
-    
-    Args:
-        path: File path
-        identifier: Identifier of the element to replace
-        replacement: String to replace lines with
-    
-    Returns:
-        Diff of the file, or failure
-
-    Example:
-        Assume you previously output ```python\ndef auth(token, password):\n    i = 5```. Replace element auth in auth.py with the last code block output
-    Tool Call:
-        {"name": "replace_element_with", "arguments": {"path": "src/auth/auth.py", "identifier": "auth"}}
-    """
-    if state.last_code_block is None:    
-        raise ValueError("No previous code block found!")
-    return replace_element_with(state, settings, path, identifier, state.last_code_block)
 
 def open_element(state: AgentState, settings: ToolSettings, path: str, identifier: str):
     """
@@ -178,4 +156,117 @@ def open_element_final(state: AgentState, settings: ToolSettings, path: str, ide
         code_start = newline_pos + 1
     
     # Parse input, check if code block is contained, pop last chat message
-    return replace_element_with(state, settings, path, identifier, input[code_start:last_closing])
+    return replace_element(state, settings, path, identifier, input[code_start:last_closing])
+
+def open_element_at(state: AgentState, settings: ToolSettings, path: str, line: int):
+    """
+    Open the innermost element at a specific line in a file for editing. The line is zero-indexed. This tool finds the deepest nested element at the given line and calls open_element for it.
+    
+    Args:
+        path: Path to the file
+        line: Zero-indexed line number in the file
+    
+    Returns:
+        The output of open_element for the found element
+    
+    Example:
+        Open element at line 5 in src/app.py
+    Tool Call:
+        {"name": "open_element_at", "arguments": {"path": "src/app.py", "line": 5}}
+    """
+    # Normalize path
+    if "\\" in path:
+        path = path.replace("\\", "/")
+    if path.startswith("."):
+        path = path[1:]
+    if path.startswith("/"):
+        path = path[1:]
+    
+    # Find the file
+    file = next((f for f in state.workspace if f.path.lower() == path.lower()), None)
+    if not file:
+        raise ValueError(f"File {path} not found")
+    
+    # Validate line number
+    lines_in_file = len(file.updated_content.split('\n'))
+    if line < 0 or line >= lines_in_file:
+        raise ValueError(f"Line {line} is out of bounds for file {path} (0-based, total lines {lines_in_file})")
+    
+    # Find the innermost element
+    best_element = None
+    best_depth = -1
+    stack = [(element, 0) for element in file.elements]  # (element, depth)
+    
+    while stack:
+        element, depth = stack.pop()
+        line_count = len(element.content.split('\n'))
+        end_line = element.line_start + line_count - 1
+        if element.line_start <= line <= end_line:
+            if depth > best_depth:
+                best_element = element
+                best_depth = depth
+            # Add children to stack with incremented depth
+            stack.extend([(child, depth + 1) for child in element.elements])
+    
+    if not best_element:
+        raise ValueError(f"No element found at line {line} in file {path}")
+    
+    # Call open_element with the found identifier
+    return open_element(state, settings, path, best_element.identifier)
+
+def replace_element_at(state: AgentState, settings: ToolSettings, path: str, line: int, replacement: str):
+    """
+    Replace the innermost element at a specific line in a file. The line is zero-indexed. This tool finds the deepest nested element at the given line and calls replace_element for it.
+    
+    Args:
+        path: Path to the file
+        line: Zero-indexed line number in the file
+        replacement: Replacement code for the element
+    
+    Returns:
+        The output of replace_element for the found element
+    
+    Example:
+        Replace element at line 5 in src/app.py with new code
+    Tool Call:
+        {"name": "replace_element_at", "arguments": {"path": "src/app.py", "line": 5, "replacement": "def new_func():\\n    pass"}}
+    """
+    # Normalize path
+    if "\\" in path:
+        path = path.replace("\\", "/")
+    if path.startswith("."):
+        path = path[1:]
+    if path.startswith("/"):
+        path = path[1:]
+    
+    # Find the file
+    file = next((f for f in state.workspace if f.path.lower() == path.lower()), None)
+    if not file:
+        raise ValueError(f"File {path} not found")
+    
+    # Validate line number
+    lines_in_file = len(file.updated_content.split('\n'))
+    if line < 0 or line >= lines_in_file:
+        raise ValueError(f"Line {line} is out of bounds for file {path} (0-based, total lines {lines_in_file})")
+    
+    # Find the innermost element
+    best_element = None
+    best_depth = -1
+    stack = [(element, 0) for element in file.elements]  # (element, depth)
+    
+    while stack:
+        element, depth = stack.pop()
+        line_count = len(element.content.split('\n'))
+        end_line = element.line_start + line_count - 1
+        if element.line_start <= line <= end_line:
+            if depth > best_depth:
+                best_element = element
+                best_depth = depth
+            # Add children to stack with incremented depth
+            stack.extend([(child, depth + 1) for child in element.elements])
+    
+    if not best_element:
+        raise ValueError(f"No element found at line {line} in file {path}")
+    
+    # Call replace_element with the found identifier and replacement
+    return replace_element(state, settings, path, best_element.identifier, replacement)

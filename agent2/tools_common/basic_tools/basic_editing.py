@@ -5,7 +5,7 @@ from agent2.formatting.autoformatter import reindent, remove_codeblock, unenumer
 from agent2.formatting.lookup import lookup_text
 import re
 
-def replace_lines_with(state: AgentState, settings: ToolSettings, path: str, line_start: int, line_end: int, replacement: str):
+def replace_lines(state: AgentState, settings: ToolSettings, path: str, line_start: int, line_end: int, replacement: str):
     """
     Replace lines in a file with a replacement string. Make sure to include all the lines that need to be removed and substituted with the replacement code, which must be written in its entirety.
     
@@ -21,7 +21,7 @@ def replace_lines_with(state: AgentState, settings: ToolSettings, path: str, lin
     Example:
         Replace lines 100-100 (line 100) of auth.py with ``i = 5``
     Tool Call:
-        {"name": "replace_lines_with", "arguments": {"path": "src/auth/auth.py", "line_start": 100, "line_end": 100, "replacement": "i = 5"}}
+        {"name": "replace_lines", "arguments": {"path": "src/auth/auth.py", "line_start": 100, "line_end": 100, "replacement": "i = 5"}}
     """
     if "\\" in path:
         path = path.replace("\\", "/")
@@ -60,7 +60,7 @@ def replace_lines_with(state: AgentState, settings: ToolSettings, path: str, lin
     file.update_elements()
     return ("Success:\n" + file.diff(None), None, None)
 
-def replace_block_with(state: AgentState, settings: ToolSettings, path: str, block: str, replacement: str):
+def replace_block(state: AgentState, settings: ToolSettings, path: str, block: str, replacement: str):
     """
     Replace a block in a file with a replacement string. You must output the entire block being replaced, and every line that must be deleted, which must be written in its entirety.
     
@@ -75,7 +75,7 @@ def replace_block_with(state: AgentState, settings: ToolSettings, path: str, blo
     Example:
         Replace block ```\ndef login():\n    i = 5\n``` in auth.py with ```\ndef login(username, password):\n    i = 6\n```
     Tool Call:
-        {"name": "replace_block_with", "arguments": {"path": "src/auth/auth.py", "block": "def login():\\n    i = 5", "replacement": "def login(username, password):\\n    i = 6"}}
+        {"name": "replace_block", "arguments": {"path": "src/auth/auth.py", "block": "def login():\\n    i = 5", "replacement": "def login(username, password):\\n    i = 6"}}
     """
     if "\\" in path:
         path = path.replace("\\", "/")
@@ -97,45 +97,4 @@ def replace_block_with(state: AgentState, settings: ToolSettings, path: str, blo
     if block_start_line > block_end_line:
         raise ValueError("This is an extremely strange error that should not occur: Block start must be less than or equal to block end!")
     
-    return replace_lines_with(state, settings, path, block_start_line, block_end_line, replacement)
-
-def replace_lines(state: AgentState, settings: ToolSettings, path: str, line_start: int, line_end: int):
-    """
-    Replace lines in a file with the last code block you output. Make sure to include all the lines that need to be removed and substituted with the replacement code, which must be written in its entirety. Replace one group of lines at a time; output one code block for each group then immediately replace it.
-    
-    Args:
-        path: File path
-        line_start: Starting line number, inclusive
-        line_end: Ending line number, inclusive
-    
-    Returns:
-        Diff of the file, or failure
-
-    Example:
-        Assume you previously output ```python\n...i = 5...\n```. Replace lines 100-105 (line 105) of auth.py with this last output code block.
-    Tool Call:
-        {"name": "replace_lines", "arguments": {"path": "src/auth/auth.py", "line_start": 100, "line_end": 105}}
-    """
-    if state.last_code_block is None:    
-        raise ValueError("No previous code block found!")
-    return replace_lines_with(state, settings, path, line_start, line_end, state.last_code_block)
-
-def replace_block(state: AgentState, settings: ToolSettings, path: str, block: str):
-    """
-    Replace a block in a file with the last code block you output. You must output the entire block being replaced, and every line that must be deleted. Replace one block of code at a time; output one code block for each block then immediately replace it.
-    
-    Args:
-        path: File path
-        block: Block to replace, every line must be typed in its entirety and matched exactly
-    
-    Returns:
-        Diff of the file, or failure
-
-    Example:
-        Assume you previously output ```python\ndef login(auth, password):\n    i = 5```. Replace ```\ndef login():\n    i = 5``` in auth.py with this last output code block.
-    Tool Call:
-        {"name": "replace_block", "arguments": {"path": "src/auth/auth.py", "block": "def login():\\n    i = 5"}}
-    """
-    if state.last_code_block is None:    
-        raise ValueError("No previous code block found!")
-    return replace_block_with(state, settings, path, block, state.last_code_block)
+    return replace_lines(state, settings, path, block_start_line, block_end_line, replacement)

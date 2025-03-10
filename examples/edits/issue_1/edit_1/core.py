@@ -917,9 +917,6 @@ class UnitBase:
         if self is other:
             return True
 
-        if other is np.ma.masked or other is None:
-            return False
-
         try:
             other = Unit(other, parse_strict="silent")
         except (ValueError, UnitsError, TypeError):
@@ -1168,6 +1165,8 @@ class UnitBase:
                     self_decomposed.bases, other_decomposed.bases
                 )
             ):
+                if other_decomposed.scale == 0:
+                    raise UnitConversionError(f"'{self!r}' is not a scaled version of '{other!r}'")
                 return self_decomposed.scale / other_decomposed.scale
 
         raise UnitConversionError(f"'{self!r}' is not a scaled version of '{other!r}'")

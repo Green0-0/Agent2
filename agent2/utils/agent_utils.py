@@ -4,6 +4,26 @@ from typing import Dict, Any
 from agent2.agent.agent import Agent
 from agent2.agent.tool_formatter import XMLToolFormatter, JSONToolFormatter, MarkdownToolFormatter, CodeACTToolFormatter
 from agent2.agent.tool_settings import ToolSettings
+from agent2.agent.tool import Tool
+from agent2.tools_common.basic_tools.basic_editing import replace_lines, replace_block
+from agent2.tools_common.element_tools.element_editing import replace_element, replace_element_at, open_element, open_element_at
+from agent2.tools_common.element_tools.element_viewing import view_element, search_elements, view_file, view_element_at
+from agent2.tools_common.basic_tools.basic_viewing import view_lines, view_file_raw, search_files
+
+tools_list = [Tool(replace_lines), 
+              Tool(replace_block), 
+              Tool(view_lines), 
+              Tool(search_files), 
+              Tool(view_file), 
+              Tool(view_file_raw), 
+              Tool(view_element), 
+              Tool(view_element_at),
+              Tool(search_elements), 
+              Tool(open_element),
+              Tool(open_element_at),
+              Tool(replace_element),
+              Tool(replace_element_at),
+              ]
 
 def save_agent_to_json(agent: Agent, file_path: str):
     if isinstance(agent.tool_formatter, JSONToolFormatter):
@@ -35,7 +55,7 @@ def save_agent_to_json(agent: Agent, file_path: str):
     with open(file_path, 'w') as f:
         json.dump(config, f, indent=2)
 
-def load_agent_from_json(file_path: str, available_tools: list) -> Agent:
+def load_agent_from_json(file_path: str) -> Agent:
     with open(file_path, 'r') as f:
         config = json.load(f)
 
@@ -70,7 +90,7 @@ def load_agent_from_json(file_path: str, available_tools: list) -> Agent:
         settings.embeddings_model_path = None
     
     # Tool selection
-    selected_tools = [t for t in available_tools if t.name in config['selected_tools']]
+    selected_tools = [t for t in tools_list if t.name in config['selected_tools']]
     
     return Agent(
         system_prompt=config['system_prompt'],

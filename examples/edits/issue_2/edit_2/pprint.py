@@ -293,7 +293,7 @@ class TableFormatter:
         # Replace tab and newline with text representations so they display nicely.
         # Newline in particular is a problem in a multicolumn table.
         col_strs = [
-            val.replace("\t", "\\t").replace("\n", "\\n") for val in col_strs_iter
+            val.replace("\t", "\\t").replace("\n", "\\n") if val else "" for val in col_strs_iter
         ]
         if len(col_strs) > 0:
             col_width = max(len(x) for x in col_strs)
@@ -357,6 +357,7 @@ class TableFormatter:
                 fill_char = ""
                 align_char = ">"
 
+
             justify_methods = {"<": "ljust", "^": "center", ">": "rjust", "=": "zfill"}
             justify_method = justify_methods[align_char]
             justify_args = (col_width, fill_char) if fill_char else (col_width,)
@@ -387,7 +388,172 @@ class TableFormatter:
         )
         return f"{name}{sep}[{structure}]"
 
-    open_element(path="astropy/utils/data_info.py", identifier="dtype_info_name")
+    def _pformat_col_iter(
+        self,
+        col,
+        max_lines,
+        show_name,
+        show_unit,
+        outs,
+        show_dtype=False,
+        show_length=None,
+    ):
+        """Iterator which yields formatted string representation of column values.
+
+        Parameters
+        ----------
+        max_lines : int
+            Maximum lines of output (header + data rows)
+
+        show_name : bool
+            Include column name. Default is True.
+
+        show_unit : bool
+            Include a header row for unit.  Default is to show a row
+            for units only if one or more columns has a defined value
+            for the unit.
+
+        outs : dict
+            Must be a dict which is used to pass back additional values
+            defined within the iterator.
+
+        show_dtype : bool
+            Include column dtype. Default is False.
+
+        show_length : bool
+            Include column length at end.  Default is to show this only
+            if the column is not shown completely.
+        """
+        max_lines, _ = self._get_pprint_size(max_lines, -1)
+        dtype = getattr(col, "dtype", None)
+        multidims = getattr(col, "shape", [0])[1:]
+        if multidims:
+            multidim0 = tuple(0 for n in multidims)
+            multidim1 = tuple(n - 1 for n in multidims)
+            multidims_all_ones = np.prod(multidims) == 1
+            multidims_has_zero = 0 in multidims
+
+        i_dashes = None
+        i_centers = []  # Line indexes where content should be centered
+        n_header = 0
+        if show_name:
+            i_centers.append(n_header)
+            # Get column name (or 'None' if not set)
+            col_name = str(col.info.name)
+            n_header += 1
+            yield self._name_and_structure(col_name, dtype)
+        if show_unit:
+            i_centers.append(n_header)
+            n_header += 1
+            yield str(col.info.unit or "")
+        if show_dtype:
+            i_centers.append(n_header)
+            n_header += 1
+            if dtype is not None:
+                # For zero-length strings, np.dtype((dtype, ())) does not work;
+                # see https://github.com/numpy/numpy/issues/27301
+                # As a work-around, just omit the shape if there is none.
+                col_dtype = dtype_info_name((dtype, multidims) if multidims else dtype)
+            else:
+                col_dtype = col.__class__.__qualname__ or "object"
+            yield col_dtype
+        if show_unit or show_name or show_dtype:
+            i_dashes = n_header
+            n_header += 1
+            yield "---"
+
+        max_lines -= n_header
+        n_print2 = max_lines // 2
+        try:
+            n_rows = len(col)
+        except TypeError:
+            is_scalar = True
+            n_rows = 1
+        else:
+            is_scalar = False
+
+        # This block of code is responsible for producing the function that
+        # will format values for this column.  The ``format_func`` function
+        # takes two args (col_format, val) and returns the string-formatted
+        # version.  Some points to understand:
+        #
+        # - col_format could itself be the formatting function, so it will
+        #    actually end up being called with itself as the first arg.  In
+        #    this case the function is expected to ignore its first arg.
+        #
+        # - auto_format_func is a function that gets called on the first
+        #    column value that is being formatted.  It then determines an
+        #    appropriate formatting function given the actual value to be
+        #    formatted.  This might be deterministic or it might involve
+        #    try/except.  The latter allows for different string formatting
+        #    options like %f or {:5.3f}.  When auto_format_func is called it:
+
+        #    1. Caches the function in the _format_funcs dict so for subsequent
+        #       values the right function is called right away.
+        #    2. Returns the formatted value.
+        #
+        # - possible_string_format_functions is a function that yields a
+        #    succession of functions that might successfully format the
+        #    value.  There is a default, but Mixin methods can override this.
+        #    See Quantity for an example.
+        #
+        # - get_auto_format_func() returns a wrapped version of auto_format_func
+        #    with the column id and possible_string_format_functions as
+        #    enclosed variables.
+        col_format = col.info.format or getattr(col.info, "default_format", None)
+        pssf = (
+            getattr(col.info, "possible_string_format_functions", None)
+            or _possible_string_format_functions
+        )
+        auto_format_func = get_auto_format_func(col, pssf)
+        format_func = col.info._format_funcs.get(col_format, auto_format_func)
+
+        if n_rows > max_lines:
+            if show_length is None:
+                show_length = True
+            i0 = n_print2 - (1 if show_length else 0)
+            i1 = n_rows - n_print2 - max_lines % 2
+            indices = np.concatenate([np.arange(0, i0 + 1), np.arange(i1 + 1, n_rows)])
+        else:
+            i0 = -1
+            indices = np.arange(n_rows)
+
+        def format_col_str(idx):
+            if multidims:
+                # Prevents columns like Column(data=[[(1,)],[(2,)]], name='a')
+                # with shape (n,1,...,1) from being printed as if there was
+                # more than one element in a row
+                if multidims_all_ones:
+                    return format_func(col_format, col[(idx,) + multidim0])
+                elif multidims_has_zero:
+                    # Any zero dimension means there is no data to print
+                    return ""
+                else:
+                    left = format_func(col_format, col[(idx,) + multidim0])
+                    right = format_func(col_format, col[(idx,) + multidim1])
+                    return f"{left} .. {right}"
+            elif is_scalar:
+                return format_func(col_format, col)
+            else:
+                return format_func(col_format, col[idx])
+
+        # Add formatted values if within bounds allowed by max_lines
+        for idx in indices:
+            if idx == i0:
+                yield "..."
+            else:
+                try:
+                    yield format_col_str(idx)
+                except ValueError:
+                    raise ValueError(
+                        f'Unable to parse format string "{col_format}" for '
+                        f'entry "{col[idx]}" in column "{col.info.name}"'
+                    )
+
+        outs["show_length"] = show_length
+        outs["n_header"] = n_header
+        outs["i_centers"] = i_centers
+        outs["i_dashes"] = i_dashes
 
     def _pformat_table(
         self,

@@ -4,24 +4,10 @@ from typing import List
 from agent2.agent.agent import Agent
 from agent2.agent.tool import Tool
 from agent2.file import File
-from agent2.tools_common.basic_tools.basic_viewing import search_files, view_lines, view_file_raw
-from agent2.tools_common.basic_tools.basic_editing import replace_lines_with, replace_block_with, replace_block, replace_lines
-from agent2.tools_common.element_tools.element_viewing import view_element, search_elements, view_file, semantic_search_elements
-from agent2.tools_common.element_tools.element_editing import replace_element, replace_element_with, open_element
 from agent2.utils.utils import load_project_files, get_completion, get_rating_keys
 from agent2.utils.agent_utils import load_agent_from_json
 
 def test_github_issue_solver():
-    # Initialize tools
-    tools = [
-        Tool(view_element),
-        Tool(replace_element),
-        Tool(replace_element_with),
-        Tool(search_elements),
-        Tool(view_file),
-        Tool(open_element)
-    ]
-
     # Test cases
     test_cases = [   
         """QTable cannot take `dimensionless_unscaled` when creating table from `data`
@@ -221,7 +207,7 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
         print("Loaded files...")
         
         # Load solver agent
-        agent = load_agent_from_json("saved_agents/search_md_agent.json", tools)
+        agent = load_agent_from_json("saved_agents/search_md_agent.json")
         
         # Start agent with current task
         agent.start(task=issue, files=project_files)
@@ -234,8 +220,8 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
             if ii > max_ii:
                 break
             oai_messages = agent.cached_state.chat.toOAI()
-            #llm_response = get_completion(oai_messages, model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
-            llm_response = get_completion(oai_messages, model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
+            llm_response = get_completion(oai_messages, model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+            #llm_response = get_completion(oai_messages, model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
             if not llm_response:
                 break
             response = agent.step(llm_response)
@@ -243,45 +229,17 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
                 break
 
         print(f"Completed Issue #{issue_num}")
-        print("Accessed elements:")
+        print("Saved elements:")
         for file, element in agent.cached_state.saved_elements:
             print(file + ":" + element)
         print("Testing coding...")
         from agent2.tools_common.finish_tools import apply_code_edits_workplace
-        agent_coder = load_agent_from_json("saved_agents/qwq_code_agent.json", tools)
-        agent_coder.finish_tools = [apply_code_edits_workplace]
+        agent_coder = load_agent_from_json("saved_agents/replication_maker.json")
+        agent_coder.get_import_block_saved = True
         agent_coder.start(task=issue, files=project_files, copy_saved_elements=agent.cached_state.saved_elements)
-        #agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
-        agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
-        agent_coder.step(agent_code_response)        
-
-        diffs = []
-        for f in agent_coder.cached_state.workspace:
-            if f.original_content != f.updated_content:
-                diffs += [f.diff(None)]
-        diffs = "\n".join(diffs)
-        print(diffs)                
-        
-        # Load rating agent
-        rating_agent = load_agent_from_json("saved_agents/qwq_rater_agent.json", tools)
-        
-        # Replace placeholders in the rating agent's init message
-        rating_agent.init_message = (
-            rating_agent.init_message
-            .replace("{{diffs}}", diffs)
-        )
-        
-        # Start agent with current task
-        rating_agent.start(task=issue, files=project_files, copy_saved_elements=agent.cached_state.saved_elements)
-        # Get response, parse response
-        #rating_llm_response = get_completion((rating_agent.cached_state.chat.toOAI()), model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
-        rating_llm_response = get_completion(rating_agent.cached_state.chat.toOAI(), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
-
-        # agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
-
-        print(rating_llm_response)
-        rating_llm_score = get_rating_keys(rating_llm_response)
-        print(rating_llm_score)
+        agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+        #agent_code_response = get_completion((agent_coder.cached_state.chat.toOAI()), model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
+        print(agent_code_response)
         time.sleep(30)  # Rate limit protection
 
 if __name__ == "__main__":

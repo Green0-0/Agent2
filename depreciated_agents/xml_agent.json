@@ -21,10 +21,9 @@
     "minimum_embeddings_similarity": 0.5
   },
   "selected_tools": [
-    "view_element",
+    "view_element_at",
     "search_elements",
-    "view_file",
-    "open_element"
+    "open_element_at"
   ],
   "prompt_templates": {
     "response_wrapper": "{{tool_response}}",

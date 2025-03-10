@@ -6,7 +6,6 @@ from agent2.formatting.autoformatter import unindent
 import re
 
 from agent2.utils.embeddings_model_demo import EmbeddingsModel
-from sentence_transformers import SentenceTransformer
 
 def search_elements(state: AgentState, settings: ToolSettings, regex: str, path: str = "", extensions: str = None):
     """
@@ -80,7 +79,7 @@ def search_elements(state: AgentState, settings: ToolSettings, regex: str, path:
                 'matches': matches,
                 'count': len(matches),
                 'true_count': len(matches),
-                'path': file.path
+                'path': file.path + f" (line {element.line_start})"
             })
     if len(results) == 0:
         return ("No matches found.", None, None)
@@ -108,7 +107,7 @@ def search_elements(state: AgentState, settings: ToolSettings, regex: str, path:
 
     formatted = [f"**Showing top {len(results)}/{total} matches:**"]
     for res in results:
-        formatted.append(f"{res['path']}:{res['id']}: {res['true_count']} matches")
+        formatted.append(f"{res['path']}: {res['id']}: {res['true_count']} matches")
         if res['doc'] != None:
             formatted.append(f"{res['doc']}")
         formatted.extend(res['matches'])
@@ -233,6 +232,8 @@ def semantic_search_elements(state: AgentState, settings: ToolSettings, query: s
     Tool Call:
         {"name": "semantic_search_elements", "arguments": {"query": "A class that manages user authentication", "path": "src/auth/", "extensions": "py,js"}}
     """
+    from sentence_transformers import SentenceTransformer
+    
     if "\\" in path:
         path = path.replace("\\", "/")
     if path.startswith((".", "/")):
@@ -334,3 +335,59 @@ def semantic_search_elements(state: AgentState, settings: ToolSettings, query: s
         formatted.append("")
     
     return ("\n".join(formatted).strip(), None, None)
+
+def view_element_at(state: AgentState, settings: ToolSettings, path: str, line: int):
+    """
+    View the innermost element at a specific line in a file. The line is zero-indexed. This tool finds the deepest nested element at the given line and calls view_element for it.
+    
+    Args:
+        path: Path to the file
+        line: Zero-indexed line number in the file
+    
+    Returns:
+        The output of view_element for the found element
+    
+    Example:
+        View element at line 5 in src/app.py
+    Tool Call:
+        {"name": "view_element_at", "arguments": {"path": "src/app.py", "line": 5}}
+    """
+    # Normalize path
+    if "\\" in path:
+        path = path.replace("\\", "/")
+    if path.startswith("."):
+        path = path[1:]
+    if path.startswith("/"):
+        path = path[1:]
+    
+    # Find the file
+    file = next((f for f in state.workspace if f.path.lower() == path.lower()), None)
+    if not file:
+        raise ValueError(f"File {path} not found")
+    
+    # Validate line number
+    lines_in_file = len(file.updated_content.split('\n'))
+    if line < 0 or line >= lines_in_file:
+        raise ValueError(f"Line {line} is out of bounds for file {path} (0-based, total lines {lines_in_file})")
+    
+    # Find the innermost element
+    best_element = None
+    best_depth = -1
+    stack = [(element, 0) for element in file.elements]  # (element, depth)
+    
+    while stack:
+        element, depth = stack.pop()
+        line_count = len(element.content.split('\n'))
+        end_line = element.line_start + line_count - 1
+        if element.line_start <= line <= end_line:
+            if depth > best_depth:
+                best_element = element
+                best_depth = depth
+            # Add children to stack with incremented depth
+            stack.extend([(child, depth + 1) for child in element.elements])
+    
+    if not best_element:
+        raise ValueError(f"No element found at line {line} in file {path}")
+    
+    # Call view_element with the found identifier
+    return view_element(state, settings, path, best_element.identifier)

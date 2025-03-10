@@ -97,6 +97,8 @@ class Agent():
 
     def perform_substitutions(self, message: str, task:str = None, tool_name:str = None, closest_match:str = None, wrong_arguments:str = None, missing_args:str = None, unrecognized_args:str = None, error_message:str = None, tool_response:str = None):
         elements_text = []
+        import_blocks_saved_for_files = []
+        self.cached_state.saved_elements.sort()
         for file_path, element_id in self.cached_state.saved_elements:
             # Find the element
             file = next((f for f in self.cached_state.workspace if f.path.lower() == file_path.lower()), None)
@@ -113,9 +115,13 @@ class Agent():
             if not element:
                 continue
             elements_text += [file.path + ":" + element.identifier]
+            elements_text += ["```python"]
             if self.get_import_block_saved:
-                elements_text += [get_first_import_block(file.original_content)]
-            elements_text += [element.to_string()]
+                if file not in import_blocks_saved_for_files:
+                    elements_text += [get_first_import_block(file.original_content)]
+                    import_blocks_saved_for_files += [file]
+            elements_text += [element.to_string(number_lines = False)]
+            elements_text += ["```"]
         elements_text = "\n".join(elements_text)
         
         tools_list_str = []
@@ -176,9 +182,9 @@ class Agent():
         self.cached_state.chat = Chat(system_prompt_final, final_init_message)
         self.bound_tool = None
         print("==== SYSTEM PROMPT: ====")
-        print(system_prompt_final[-1000:])
+        print(system_prompt_final)
         print("==== INIT MESSAGE: ====")
-        print(final_init_message[-1000:])
+        print(final_init_message)
         self.frozen = False
         return AgentResponse(self.cached_state.chat.toOAI(), None, None, None)
     

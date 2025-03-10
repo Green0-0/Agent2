@@ -20,9 +20,6 @@ from agent2.tools_common.element_tools.element_editing import replace_element, r
 
 from agent2.utils.utils import load_project_files, get_completion, get_rating_keys
 
-from sentence_transformers import SentenceTransformer
-from agent2.utils.embeddings_model_demo import EmbeddingsModel
-
 def test_github_issue_solver():
     # Initialize tools
     tools = [

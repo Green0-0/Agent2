@@ -60,7 +60,7 @@ def get_overlaps(line_start: int, line_end: int, file: File) -> List[Element]:
     else:
         return overlapping_elements
     
-    # Assume this function is implemented to interface with your LLM API
+# Assume this function is implemented to interface with your LLM API
 def get_completion(oai_messages, timeout_duration : int = 120, max_retries : int = 5, api_url : str = "https://api.mistral.ai/v1", api_key : str = os.environ.get("API_KEY"), model : str = "mistral-small-2501") -> str:  
     headers = {
         'Authorization': f'Bearer {api_key}',

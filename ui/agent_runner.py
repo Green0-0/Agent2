@@ -8,30 +8,9 @@ from agent2.file import File
 from agent2.utils.utils import get_completion
 from agent2.utils.agent_utils import load_agent_from_json
 from agent2.utils.utils import load_project_files
-from agent2.utils.agent_utils import save_agent_to_json, load_agent_from_json
-from agent2.tools_common.basic_tools.basic_editing import replace_lines, replace_lines_with, replace_block, replace_block_with
-from agent2.tools_common.element_tools.element_editing import replace_element, replace_element_with, open_element
-from agent2.tools_common.basic_tools.basic_viewing import view_lines, search_files, view_file_raw
-from agent2.tools_common.element_tools.element_viewing import view_element, search_elements, semantic_search_elements, view_file
+from agent2.utils.agent_utils import save_agent_to_json, load_agent_from_json, tools_list
 from agent2.agent.tool_settings import ToolSettings
 from agent2.agent.tool import Tool
-
-tools = [
-    Tool(replace_block),
-    Tool(replace_block_with),
-    Tool(replace_lines),
-    Tool(replace_lines_with),
-    Tool(replace_element),
-    Tool(replace_element_with),
-    Tool(view_lines),
-    Tool(search_files),
-    Tool(view_element),
-    Tool(search_elements),
-    Tool(semantic_search_elements),
-    Tool(view_file),
-    Tool(view_file_raw),
-    Tool(open_element)
-]
 
 def load_project_files(root_path="examples/astropy") -> List[File]:
     """Load all files recursively from the specified directory, skipping binary files."""
@@ -81,7 +60,7 @@ def run_agent_interface():
                     agent_path = Path(agent_config_dir) / selected_agent
                     st.session_state.agent = load_agent_from_json(
                         str(agent_path), 
-                        available_tools=tools
+                        available_tools=tools_list
                     )
                     st.session_state.files = load_project_files(codebase_path)
                     st.success("Agent initialized successfully!")
