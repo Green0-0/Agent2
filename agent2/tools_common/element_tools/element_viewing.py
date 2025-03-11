@@ -173,7 +173,7 @@ def view_element(state: AgentState, settings: ToolSettings, path: str, identifie
     content = "\n".join(lines)
     if len(element.elements) > 0:
         content += f"\n**This element has {len(element.elements)} sub-elements, you can use the view_element tool to view them, just make sure to specify the entire path, for instance, {element.elements[0].identifier}.**"
-    return (content, None, None)
+    return (f"Element {element.identifier} at {file.path}:\n{content}", None, None)
 
 def view_file(state: AgentState, settings: ToolSettings, path: str):
     """
