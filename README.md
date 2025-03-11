@@ -44,7 +44,7 @@ Notes on building agents:
 - It is not recommended to use more than 4 tools on an agent. This is because:
     - Tools clog up the context, small local LLMs aren't like Claude Sonnet and cannot handle this
     - LLMs suck at using the right tools at the right time; once I had a list_dir tool and Qwen-Coder would sometimes insist on repeatedly using it to find a file instead of just searching for the file
-    - Recommended tools: view_element_at, search_elements, open_element_at. View_element is okay, but view_element_at (inspired by openhands) works much better. Replace_element_at works, but open_element_at more consistently enables LLMs that aren't familiar with tool use to get the code edits correctly without hallucinating.
+    - Recommended tools: view_element_at, search_elements, open_element. View_element is okay, but view_element_at (inspired by openhands) works much better. Replace_element_at works, but open_element more consistently enables LLMs that aren't familiar with tool use to get the code edits correctly without hallucinating. There is currently some issues (not literal issues, but LLM issues) with open_element_at, use with caution.
 - Make sure to describe the tool calling format. See the example agents for how to do so properly, but there's more ways to do so.
 
 TODO (Urgent):

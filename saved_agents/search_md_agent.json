@@ -21,7 +21,7 @@
     "minimum_embeddings_similarity": 0.5
   },
   "selected_tools": [
-    "view_element_at",
+    "view_element",
     "search_elements"
   ],
   "prompt_templates": {
