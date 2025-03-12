@@ -165,7 +165,10 @@ def view_element(state: AgentState, settings: ToolSettings, path: str, identifie
             state.saved_elements.append((file.path, element.identifier))
 
     if len(element.content.splitlines()) < settings.max_view_lines_start + settings.max_view_lines_end:
-        return (f"Element {element.identifier} at {file.path}:\n{element.to_string(number_lines=settings.number_lines, unindent_text=settings.unindent_inputs, mask_subelements = False)}", None, None)
+        content = element.to_string(number_lines=settings.number_lines, unindent_text=settings.unindent_inputs, mask_subelements = False)
+        if len(element.elements) > 1:
+            content += f"\n**This element has {len(element.elements)} sub-elements, you can use the view_element tool to view them, just make sure to specify the entire path, for instance, {element.elements[0].identifier} or {element.elements[1].identifier}.**"
+        return (f"Element {element.identifier} at {file.path}:\n{content}", None, None)
     content = element.to_string(number_lines=settings.number_lines, unindent_text=settings.unindent_inputs)
     lines = content.splitlines()
     if len(lines) > settings.max_view_lines_end + settings.max_view_lines_start:
