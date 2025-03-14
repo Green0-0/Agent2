@@ -33,7 +33,7 @@ Using the streamlit UI:
 
 Kaggle notebook:
 1. Open:
-`` https://www.kaggle.com/code/green000/agent2-v0-01-competition-notebook`` (Note this is v0.01, v0.02 will be released soon)``
+``https://www.kaggle.com/code/green000/agent2-v0-01-competition-notebook`` (Note this is v0.01, v0.02 will be released soon)
 2. Run it
 
 Python code:
