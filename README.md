@@ -1,6 +1,6 @@
-# Note: Agent2 is WIP, every update will introduce breaking changes!!! (Also only support for Python right now)
+### Note: Agent2 is WIP, every update will introduce breaking changes (Also only support for Python right now)
 
-# Note2: Agent2 is for *developers*, not users. If you don't understand how an LLM works, or can't understand code to the point that an LLM has to write all of it for you, Agent2 isn't for you. This library will not babysit you.
+### Note2: Agent2 is for *developers*, not users. If you don't understand how an LLM works, or can't understand code to the point that an LLM has to write all of it for you, Agent2 isn't for you. This library will not babysit you.
 
 So, what features should a good agentic library have?
 1. The ability to scale: GPUs should be fully utilized, and the more compute, the better the end result.
