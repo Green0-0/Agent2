@@ -121,11 +121,11 @@ class Tool:
                 param_desc = ":".join(line.split(":")[1:]).strip()
                 param_descriptions[param_name] = param_desc
 
+        skip = 2 if len(sig.parameters.items()) > 1 else 0
         for name, param in sig.parameters.items():
-            # Skip self and all_files parameters
-            if name in ['self', 'state', "settings"]:
+            if skip > 0:
+                skip -= 1
                 continue
-                
             # Get parameter type`
             param_type = param.annotation.__name__
             if param.default == inspect.Parameter.empty:

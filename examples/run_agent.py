@@ -1,93 +1,15 @@
-# NOTE THIS IS OUTDATED AND MAY NOT WORK, SEE RUN AGENT LOADED INSTEAD
-
-
-
-
-
-
 import os
 import time
 from typing import List
 from agent2.agent.agent import Agent
 from agent2.agent.tool import Tool
-from agent2.agent.tool_formatter import XMLToolFormatter, JSONToolFormatter, MarkdownToolFormatter, CodeACTToolFormatter
-from agent2.agent.tool_settings import ToolSettings
 from agent2.file import File
-from agent2.tools_common.basic_tools.basic_viewing import search_files, view_lines, view_file_raw
-from agent2.tools_common.basic_tools.basic_editing import replace_lines_with, replace_block_with, replace_block, replace_lines
-from agent2.tools_common.element_tools.element_viewing import view_element, search_elements, view_file, semantic_search_elements
-from agent2.tools_common.element_tools.element_editing import replace_element, replace_element_with
-
-from agent2.utils.utils import load_project_files, get_completion, get_rating_keys
+from agent2.utils.utils import load_project_files, get_completion
+from agent2.utils.agent_utils import load_agent_from_json
 
 def test_github_issue_solver():
-    # Initialize tools
-    tools = [
-        Tool(view_element),
-        Tool(replace_element),
-        Tool(search_elements),
-        Tool(view_file)
-    ]
-
-    # Configure tool formatting and settings
-    tool_formatter = MarkdownToolFormatter(
-        tool_start="<tool_call>",
-        tool_end="</tool_call>"
-    )
-    tool_settings = ToolSettings()
-
-    # System prompt with dynamic tool listing
-    system_prompt = """You are an expert coding agent designed to solve github issues without fail.
-You have access to the following directories:
-{{top_level_files_list}}
-Here is a breakdown of their file types:
-{{filetype_summary}}
-
-To assist you in your tasks, you have the following tools that you are allowed to use; make sure to wrap them within the {{tools_start}} and {{tools_end}} tokens:
-{{tools_list}}.
-
-Here are some examples of how to use the tools:
-{{tools_examples}}
-"""
-    
-    # Initial message with task substitution
-    init_message = """Below is a github issue that occurs in the files you were given:
-{{task}}
-
-Analyze the issue and methodically use the tools to implement a solution. Begin by searching for relevant code snippets, then view those snippets, and finally perform your edits. Always think before using a tool (but remember to use the tool), and observe the outputs of a tool and decide on their relevance to fixing the github issue. Please do not include line numbers when writing code."""
-
-    init_message_rater = """Here are a list of elements within some files:
-{{elements_saved_text}}
-Here is a github issue:
-{{task}}
-Here are a list of edits made for the issue:
-{{diffs}}
-First, analyze the possible sources of the issue and what is wrong with the original code. 
-Then, determine what the modifications appear to try to do.
-Next, think of all the different ways the modifications could fail to solve the original issue, and what the modifications might overlook.
-Finally, think about how likely it is that the modifications will fully fix the issue. Is it very likely, likely, possible, unlikely, or very unlikely that the modifications fully fix the issue? Fully fixing the issue means passing for all test cases, including edge cases. Be detailed in your analysis of the problem, modifications, and likelihood, and always think before coming to conclusions.
-At the very end of your output, output one of the following: VERY_UNLIKELY, UNLIKELY, POSSIBLE, LIKELY, VERY_LIKELY representing how likely it is that the modifications will fix the issue. Do not output anything else after outputting the key for the likelihood.
-"""
-
-    #init_message = """"I am currently doing a test run of tool parsing, please use tools in as many faulty ways as you can think of, such as malformatting the xml tags or calling a nonexistant tool or forgetting parameters, think before using a broken tool"""
-
-    tool_response_wrapper = "{{tool_response}}"
-
-    tool_not_found_error_wrapper = """Tool '{{tool_name}}' not found. Closest match (if present): {{closest_match}}
-Available tools: {{tools_list_name}}
-"""
-
-    tool_wrong_arguments_error_wrapper = """Invalid arguments for '{{tool_name}}'
-Wrong arguments: {{wrong_arguments}}
-Missing parameters: {{missing_args}}
-Unrecognized parameters: {{unrecognized_args}}
-"""
-
-    tool_miscellaneous_error_wrapper = """Miscellaneous error in '{{tool_name}}': 
-{{error_message}}"""
-
-    # Test cases from original implementation
-    test_cases = [        
+    # Test cases
+    test_cases = [   
         """QTable cannot take `dimensionless_unscaled` when creating table from `data`
 ### Description
 
@@ -280,91 +202,31 @@ This turns out to be because in `io`, for table subclasses, one does `QTable(tab
         print(f"**** Processing Issue #{issue_num} ****")
         
         print("Loading files...")
-        # Load fresh files for each test case
         project_files = load_project_files()
-
+        
         print("Loaded files...")
         
-        # Initialize agent
-        agent = Agent(
-            system_prompt=system_prompt,
-            init_message=init_message,
-            tools_list=tools,
-            tool_formatter=tool_formatter,
-            tools_settings=tool_settings,
-            tool_response_wrapper=tool_response_wrapper,
-            tool_not_found_error_wrapper=tool_not_found_error_wrapper,
-            tool_wrong_arguments_error_wrapper=tool_wrong_arguments_error_wrapper,
-            tool_miscellaneous_error_wrapper=tool_miscellaneous_error_wrapper
-        )
+        # Load solver agent
+        agent = load_agent_from_json("saved_agents/md_editor_agent.json")
         
         # Start agent with current task
         agent.start(task=issue, files=project_files)
         
         # Agent interaction loop
         while True:
-            # Get current chat state
             oai_messages = agent.cached_state.chat.toOAI()
-            
-            # Get LLM response (implement your API call here)
-            llm_response = get_completion(oai_messages)
+            #llm_response = get_completion(oai_messages, model="Qwen2.5-Coder-32B-Instruct", api_url="https://api.sambanova.ai/v1")
+            llm_response = get_completion(oai_messages, model="mistral-small-2501", api_url="https://api.mistral.ai/v1")
             if not llm_response:
                 break
-                
-            # Process agent step
             response = agent.step(llm_response)
-            
-            # Exit condition
             if response.done:
                 break
 
-        # Save modified files
-        edit_count = 0
-        for file in agent.cached_state.workspace:
-            if file.original_content != file.updated_content:
-                edit_count += 1
-                edit_dir = f"examples/edits/issue_{issue_num}/edit_{edit_count}"
-                os.makedirs(edit_dir, exist_ok=True)
-                
-                # Write modified file
-                output_path = os.path.join(edit_dir, os.path.basename(file.path))
-                with open(output_path, "w") as f:
-                    f.write(file.updated_content)
-                
-                # Print diff
-                print(f"\nEdit #{edit_count} in {file.path}:")
-                print(file.diff("astropy"))
-        
-        print(f"Completed Issue #{issue_num}")
-        print("Accessed elements:")
-        for file, element in agent.cached_state.saved_elements:
-            print(file + ":" + element)
-        print("Testing rating...")
-        diffs = []
+        print("*** DIFFS ***")
         for f in agent.cached_state.workspace:
-            if f.original_content != f.updated_content:
-                diffs += [f.diff(None)]
-        diffs = "\n".join(diffs)
-        print(diffs)
-        # Initialize rating agent
-        rating_agent = Agent(
-            system_prompt="",
-            init_message=init_message_rater.replace("{{diffs}}", diffs),
-            tools_list=[],
-            tool_formatter=tool_formatter,
-            tools_settings=tool_settings,
-            tool_response_wrapper="",
-            tool_not_found_error_wrapper="",
-            tool_wrong_arguments_error_wrapper="",
-            tool_miscellaneous_error_wrapper=""
-        )
-        # Start agent with current task
-        rating_agent.start(task=issue, files=project_files, copy_saved_elements=agent.cached_state.saved_elements)
-        # Get response, parse response
-        rating_llm_response = get_completion(rating_agent.cached_state.chat.toOAI())
-        print(rating_llm_response)
-        rating_llm_score = get_rating_keys(rating_llm_response)
-        print(rating_llm_score)
+            if f.content != f.original_content:
+                print(f.diff(root="."))
         time.sleep(30)  # Rate limit protection
 
 if __name__ == "__main__":

@@ -105,13 +105,13 @@ def apply_code_edits_workplace(agentResponse: AgentResponse, agentState: AgentSt
         line_end = line_start + len(original_lines)
         
         # Apply update
-        file_content_lines = target_file.updated_content.split('\n')
+        file_content_lines = target_file.content.split('\n')
         if line_start >= len(file_content_lines) or line_end > len(file_content_lines):
             warning = True
             print("WEIRD FAILURE")
             continue
         
-        target_file.updated_content = '\n'.join(
+        target_file.content = '\n'.join(
             file_content_lines[:line_start] +
             new_content_reindented.split('\n') +
             file_content_lines[line_end:]

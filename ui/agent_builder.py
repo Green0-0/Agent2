@@ -9,24 +9,22 @@ from agent2.agent.tool import Tool
 
 
 DEFAULT_TEMPLATES = {
-    "system_prompt": """You are Qwen, created by Alibaba Cloud. You are a helpful assistant.
+    "system_prompt": """You are an expert programming agent that completes tasks for a user.
 
-Here is the list of folders at the root level that you have access to:
+To complete your tasks, you can call tools, which must be wrapped within {{tools_start}} and {{tools_end}} tokens. Here are the tools you have access to:
+{{tools_list}}
+
+Here are examples of how to use the tools:
+{{tools_examples}}
+
+Note that tools zero-index lines within files. Before using a tool, always explain why you are using the tool, and after using a tool, first reflect on the output the tool has given you and its relevance with the user task, then continue in solving the task. When you are finished, you should output a short summary of what you have done.""",
+
+    "init_message": """You have been given access to the user's codebase. Make sure to have a full understanding of the relevant portions of the user's codebase before attempting to make any changes or answer any questions.  Here is the list of folders at the root level that you have access to, along with  a summary of file types in the project:
 {{top_level_files_list}}
-
-And a summary of file types in the project:
 {{filetype_summary}}
 
-To assist you in your tasks, you have the following tools that you are allowed to use; make sure to wrap them within the {{tools_start}} and {{tools_end}} tokens:
-{{tools_list}}.
-
-Here are some examples of how to use the tools:
-{{tools_examples}}""",
-
-    "init_message": """Below is a github issue that occurs in the files you were given:
-{{task}}
-
-Your goal is to find and edit the relevant files to solve the github issue. Before using a tool, explain why you are using the tool (what relevance does it have with the github issue. After using a tool, you will receive some output, reflect on the relevance of the output with the github issue. When you are complete, give a short one paragraph summary of what you've done. You do NOT need to test or run your code. Please do not include line numbers when writing code. You may only use a single tool call per turn. If you cannot find a file, think of an alternative way to fix the issue, do not repeatedly look for a file. Begin by searching for relevant elements within the folders you have access to. Remember to wrap tool calls within {{tools_start}} and {{tools_end}}""",
+Here is a task from a user:
+{{task}}""",
 
     "tool_response_wrapper": "{{tool_response}}",
     
@@ -82,6 +80,7 @@ def agent_builder(available_tools: list):
                 'tool_start': '{{tools_start}}',
                 'tool_end': '{{tools_end}}'
             },
+            'decay_speed': 0,
             'tool_settings': ToolSettings().__dict__,
             'prompt_templates': {
                 'response_wrapper': DEFAULT_TEMPLATES['tool_response_wrapper'],
@@ -179,6 +178,18 @@ def agent_builder(available_tools: list):
     settings['minimum_embeddings_similarity'] = cols[1].number_input(
         "Minimum Embeddings Similarity", 0.0, 1.0, settings['minimum_embeddings_similarity']
     )
+    settings["search_use_docstring"] = cols[0].checkbox(
+        "Search Use Docstring", value=settings["search_use_docstring"]
+    )
+
+    # Other properties
+    st.subheader("Other Properties")
+    decay_speed = st.number_input(
+        "Decay Speed", 
+        min_value=0, 
+        max_value=2, 
+        value=st.session_state.config['decay_speed']
+    )
     
     # Prompt templates
     st.subheader("Core Prompts")
@@ -249,7 +260,8 @@ def agent_builder(available_tools: list):
                 tool_response_wrapper=response_wrapper,
                 tool_not_found_error_wrapper=not_found_error,
                 tool_wrong_arguments_error_wrapper=wrong_args_error,
-                tool_miscellaneous_error_wrapper=misc_error
+                tool_miscellaneous_error_wrapper=misc_error,
+                decay_speed=decay_speed
             )
 
             # Save using the utility function

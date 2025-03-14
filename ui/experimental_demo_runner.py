@@ -8,7 +8,7 @@ from agent2.file import File
 from agent2.utils.utils import get_completion
 from agent2.utils.agent_utils import load_agent_from_json
 from agent2.utils.utils import load_project_files
-from agent2.utils.agent_utils import save_agent_to_json, load_agent_from_json, tools_list
+from agent2.utils.agent_utils import save_agent_to_json, load_agent_from_json
 from agent2.agent.tool_settings import ToolSettings
 from agent2.agent.tool import Tool
 
@@ -59,8 +59,7 @@ def run_agent_interface():
                 try:
                     agent_path = Path(agent_config_dir) / selected_agent
                     st.session_state.agent = load_agent_from_json(
-                        str(agent_path), 
-                        available_tools=tools_list
+                        str(agent_path)
                     )
                     st.session_state.files = load_project_files(codebase_path)
                     st.success("Agent initialized successfully!")
@@ -91,7 +90,7 @@ def run_agent_interface():
         # Start button and turn limit
         col1, col2 = st.columns(2)
         with col1:
-            max_turns = st.number_input("Maximum Turns", min_value=1, max_value=50, value=15)
+            max_turns = st.number_input("Maximum Turns", min_value=1, max_value=50, value=30)
         
         start_button = st.button("Solve Issue", disabled=st.session_state.agent_process['running'] or 'agent' not in st.session_state)
         stop_button = st.button("Stop Agent", disabled=not st.session_state.agent_process['running'])
@@ -161,11 +160,11 @@ def run_agent_interface():
                     current_step = st.session_state.agent_process.get('step', 0)
                     
                     # Check if we've reached the maximum number of turns
-                    if current_step >= st.session_state.agent_process.get('max_turns', 15):
+                    if current_step >= max_turns:
                         st.session_state.agent_process['running'] = False
                         st.session_state.agent_process['conversation'].append({
                             "role": "system",
-                            "content": f"Agent stopped after reaching maximum turns ({st.session_state.agent_process['max_turns']})"
+                            "content": f"Agent stopped after reaching maximum turns ({max_turns})"
                         })
                         status.update(label="Processing complete (max turns reached)!", state="complete")
                         st.rerun()
@@ -212,7 +211,7 @@ def run_agent_interface():
                         
                         # Collect diffs incrementally
                         diffs = []
-                        codebase_path = Path(st.session_state.get('codebase_path', 'examples/astropy'))
+                        pth = Path(codebase_path)
                         for file in agent.cached_state.workspace:
                             if file.original_content != file.updated_content:
                                 file_path = codebase_path / file.path

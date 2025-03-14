@@ -1,11 +1,146 @@
 from agent2.agent.tool_settings import ToolSettings
 from agent2.file import File
 from agent2.agent.agent_state import AgentState
-from agent2.formatting.autoformatter import enumerate_lines
-from agent2.formatting.autoformatter import unindent
+from agent2.formatting.autoformatter import reindent, remove_codeblock, unenumerate_lines
+from agent2.formatting.lookup import lookup_text
 import re
 
-from agent2.utils.embeddings_model_demo import EmbeddingsModel
+def replace_lines(state: AgentState, settings: ToolSettings, path: str, line_start: int, line_end: int):
+    """
+    Replace lines in a file with the last code block you output. Make sure to include all the lines that need to be removed and substituted with the replacement code, which must be written in its entirety. Replace one group of lines at a time; output one code block for each group then immediately replace it.
+    
+    Args:
+        path: File path
+        line_start: Starting line number, inclusive
+        line_end: Ending line number, inclusive
+    
+    Returns:
+        Diff of the file, or failure
+
+    Example:
+        Assume you previously output ```python\n...i = 5...\n```. Replace lines 100-105 (line 105) of auth.py with this last output code block.
+    Tool Call:
+        {"name": "replace_lines", "arguments": {"path": "src/auth/auth.py", "line_start": 100, "line_end": 105}}
+    """
+    if state.last_code_block is None:    
+        raise ValueError("No previous code block found!")
+    return replace_lines_with(state, settings, path, line_start, line_end, state.last_code_block)
+
+def replace_block(state: AgentState, settings: ToolSettings, path: str, block: str):
+    """
+    Replace a block in a file with the last code block you output. You must output the entire block being replaced, and every line that must be deleted. Replace one block of code at a time; output one code block for each block then immediately replace it.
+    
+    Args:
+        path: File path
+        block: Block to replace, every line must be typed in its entirety and matched exactly
+    
+    Returns:
+        Diff of the file, or failure
+
+    Example:
+        Assume you previously output ```python\ndef login(auth, password):\n    i = 5```. Replace ```\ndef login():\n    i = 5``` in auth.py with this last output code block.
+    Tool Call:
+        {"name": "replace_block", "arguments": {"path": "src/auth/auth.py", "block": "def login():\\n    i = 5"}}
+    """
+    if state.last_code_block is None:    
+        raise ValueError("No previous code block found!")
+    return replace_block_with(state, settings, path, block, state.last_code_block)
+
+def replace_element(state: AgentState, settings: ToolSettings, path: str, identifier: str):
+    """
+    Replace an element and all its subelements with the last code block you output. Always edit the innermost elements and not outer elements. Replace one element at a time; output one code block for each element then immediately replace it. Make sure to specify the element path exactly, and the entirety of the replacement code, otherwise it will be cut off; if you want to view the bar method within the foo class, use foo.bar.
+    
+    Args:
+        path: File path
+        identifier: Identifier of the element to replace
+        replacement: String to replace lines with
+    
+    Returns:
+        Diff of the file, or failure
+
+    Example:
+        Assume you previously output ```python\ndef auth(token, password):\n    i = 5```. Replace element auth in auth.py with the last code block output
+    Tool Call:
+        {"name": "replace_element_with", "arguments": {"path": "src/auth/auth.py", "identifier": "auth"}}
+    """
+    if state.last_code_block is None:    
+        raise ValueError("No previous code block found!")
+    return replace_element_with(state, settings, path, identifier, state.last_code_block)
+
+def search_files(state: AgentState, settings: ToolSettings, regex: str, path: str = "", extensions: str = None):
+    """
+    Recursively search along the path for lines matching a regex (case insensitive)
+    
+    Args:
+        regex: Regular expression to match against
+        path: Path of directory to search (defaults to root)
+        extensions: Optional comma seperated string list of file extensions to filter
+        
+    Returns:
+        Formatted string showing:
+        - Matching files with match counts and matches
+        - Error if invalid regex
+
+    Example:
+        Find places containing authentication patterns
+    Tool Call:
+        {"name": "search_files", "arguments": {"regex": "auth|login|session", "path": "src/auth/", "extensions": "py"}}
+    """
+    if "\\" in path:
+        path = path.replace("\\", "/")
+    if len(path) > 0 and path[0] == ".":
+        path = path[1:]
+    if len(path) > 0 and path[0] == "/":
+        path = path[1:]
+
+    try:
+        pattern = re.compile(regex, flags=re.IGNORECASE)
+    except re.error:
+        raise ValueError(f"Invalid regex pattern: {regex}")
+    
+    files = state.workspace
+    if path:
+        files = [f for f in files if f.path.lower().startswith(path.lower())]
+    if extensions:
+        extensions = extensions.split(",")
+        files = [f for f in files if any(f.extension.lower() in ext.lower() or ext.lower() in f.extension.lower() for ext in extensions)]
+
+    if len (files) == 0:
+        raise ValueError(f"Path {path} does not exist in workspace")
+    # Find regex matches
+    results = []
+    for f in files:
+        all_matches = []
+        content = f.content
+        content = "\n".join([line.strip() for line in content.splitlines()])
+        if settings.number_lines:
+            content = enumerate_lines(content)
+        for line in content.splitlines():
+            if pattern.search(line):
+                all_matches.append(line.strip())
+        if len(all_matches) > 0:
+            results.append((f.path, all_matches, len(all_matches)))
+    if len(results) == 0:
+        return ("No matches found.", None, None)
+    results.sort(key=lambda x: x[2], reverse=True)
+    total_results_count = len(results)
+    results = results[:settings.max_search_result_listings]
+    result_line_count = sum(num for _, _, num in results)
+    while result_line_count > settings.max_search_result_lines:
+        # Find the file with the most matches, remove the last match
+        most_matches = max(results, key=lambda x: len(x[1]))
+        most_matches[1].pop()
+        result_line_count -= 1
+
+    # Format results
+    formatted_results = [f"**Showing top {len(results)}/{total_results_count} matches:**"]
+    for match in results:
+        formatted_results += [f"{match[0]}: {match[2]} matches"]
+        for line in match[1]:
+            formatted_results += [f"{line}"]
+        formatted_results += [""]
+    
+    return ("\n".join(formatted_results).strip(), None, None)
 
 def search_elements(state: AgentState, settings: ToolSettings, regex: str, path: str = "", extensions: str = None):
     """
@@ -114,104 +249,6 @@ def search_elements(state: AgentState, settings: ToolSettings, regex: str, path:
         formatted.append("")
     
     return ("\n".join(formatted).strip(), None, None)
-
-def view_element(state: AgentState, settings: ToolSettings, path: str, identifier: str):
-    """
-    View an element in a file. Make sure to specify the element path exactly; if you want to view the bar method within the foo class, use foo.bar. You should always view an element that you intend to modify, before you modify it.
-    
-    Args:
-        identifier: Element identifier to view
-    
-    Returns:
-        Formatted string showing:
-        - The content of the element
-
-    Example:
-        View element auth
-    Tool Call:
-        {"name": "view_element", "arguments": {"path": "src/auth/auth.py", "identifier": "auth"}}
-    """
-    if "\\" in path:
-        path = path.replace("\\", "/")
-    if len(path) > 0 and path[0] == ".":
-        path = path[1:]
-    if len(path) > 0 and path[0] == "/":
-        path = path[1:]
-
-    file = next((f for f in state.workspace if f.path.lower() == path.lower()), None)
-    if not file:
-        raise ValueError(f"File {path} not found")
-    
-    all_elements = []
-    stack = list(file.elements)
-    while stack:
-        element = stack.pop()
-        all_elements.append(element)
-        stack.extend(element.elements)
-    
-    element = next((e for e in all_elements if e.identifier.lower() == identifier.lower()), None)
-    if not element:
-        element = next((e for e in all_elements if identifier.lower() in e.identifier.lower()), None)
-        if not element:
-            element = next((e for e in all_elements if identifier.lower().split(".")[-1] in e.identifier.lower()), None)
-        if not element:
-            element = next((e for e in all_elements if e.identifier.lower().split(".")[-1] in identifier.lower()), None)
-        if not element:
-            raise ValueError(f"Element {identifier} not found in file {path}")
-        else:
-            raise ValueError(f"Element {identifier} not found in file {path}. Did you mean {element.identifier}?")
-    if settings.secretly_save:
-        if (file.path, element.identifier) not in state.saved_elements:
-            state.saved_elements.append((file.path, element.identifier))
-
-    if len(element.content.splitlines()) < settings.max_view_lines_start + settings.max_view_lines_end:
-        content = element.to_string(number_lines=settings.number_lines, unindent_text=settings.unindent_inputs, mask_subelements = False)
-        if len(element.elements) > 1:
-            content += f"\n**This element has {len(element.elements)} sub-elements, you can use the open_element tool to edit them, just make sure to specify the entire path, for instance, {element.elements[0].identifier} or {element.elements[1].identifier}.**"
-        return (f"Element {element.identifier} at {file.path}:\n{content}", None, None)
-    content = element.to_string(number_lines=settings.number_lines, unindent_text=settings.unindent_inputs)
-    lines = content.splitlines()
-    if len(lines) > settings.max_view_lines_end + settings.max_view_lines_start:
-        lines = lines[:settings.max_view_lines_start] + ["..."] + lines[-settings.max_view_lines_end:] + ["\nNote: Showing only top and bottom " + str(settings.max_view_lines_start + settings.max_view_lines_end) + " lines to prevent context overflow."]
-    content = "\n".join(lines)
-    if len(element.elements) > 0:
-        content += f"\n**This element has {len(element.elements)} sub-elements, you can use the view_element tool to view them, just make sure to specify the entire path, for instance, {element.elements[0].identifier}.**"
-    return (f"Element {element.identifier} at {file.path}:\n{content}", None, None)
-
-def view_file(state: AgentState, settings: ToolSettings, path: str):
-    """
-    View the general contents of a file.
-    
-    Args:
-        path: File path
-
-    Returns:
-        Formatted string showing:
-        - The content of the file
-
-    Example:
-        View file src/auth/auth.py
-
-    Tool Call:
-        {"name": "view_file", "arguments": {"path": "src/auth/auth.py"}}
-    """
-    if "\\" in path:
-        path = path.replace("\\", "/")
-    if len(path) > 0 and path[0] == ".":
-        path = path[1:]
-    if len(path) > 0 and path[0] == "/":
-        path = path[1:]
-
-    file = next((f for f in state.workspace if f.path.lower() == path.lower()), None)
-    if not file:
-        raise ValueError(f"File {path} not found")
-    
-    content = file.to_string(unindent_text=settings.unindent_inputs, number_lines=settings.number_lines)
-    lines = content.splitlines()
-    if len(lines) > settings.max_view_lines_end + settings.max_view_lines_start:
-        lines = lines[:settings.max_view_lines_start] + ["..."] + lines[-settings.max_view_lines_end:] + ["\nNote: Showing only top and bottom " + str(settings.max_view_lines_start + settings.max_view_lines_end) + " lines to prevent context overflow."]
-    content = "\n".join(lines)
-    return (content, None, None)
 
 def semantic_search_elements(state: AgentState, settings: ToolSettings, query: str, 
                             path: str = "", extensions: str = None) -> str:
@@ -338,59 +375,3 @@ def semantic_search_elements(state: AgentState, settings: ToolSettings, query: s
         formatted.append("")
     
     return ("\n".join(formatted).strip(), None, None)
-
-def view_element_at(state: AgentState, settings: ToolSettings, path: str, line: int):
-    """
-    View the innermost element at a specific line in a file. The line is zero-indexed. This tool finds the deepest nested element at the given line and calls view_element for it.
-    
-    Args:
-        path: Path to the file
-        line: Zero-indexed line number in the file
-    
-    Returns:
-        The output of view_element for the found element
-    
-    Example:
-        View element at line 5 in src/app.py
-    Tool Call:
-        {"name": "view_element_at", "arguments": {"path": "src/app.py", "line": 5}}
-    """
-    # Normalize path
-    if "\\" in path:
-        path = path.replace("\\", "/")
-    if path.startswith("."):
-        path = path[1:]
-    if path.startswith("/"):
-        path = path[1:]
-    
-    # Find the file
-    file = next((f for f in state.workspace if f.path.lower() == path.lower()), None)
-    if not file:
-        raise ValueError(f"File {path} not found")
-    
-    # Validate line number
-    lines_in_file = len(file.updated_content.split('\n'))
-    if line < 0 or line >= lines_in_file:
-        raise ValueError(f"Line {line} is out of bounds for file {path} (0-based, total lines {lines_in_file})")
-    
-    # Find the innermost element
-    best_element = None
-    best_depth = -1
-    stack = [(element, 0) for element in file.elements]  # (element, depth)
-    
-    while stack:
-        element, depth = stack.pop()
-        line_count = len(element.content.split('\n'))
-        end_line = element.line_start + line_count - 1
-        if element.line_start <= line <= end_line:
-            if depth > best_depth:
-                best_element = element
-                best_depth = depth
-            # Add children to stack with incremented depth
-            stack.extend([(child, depth + 1) for child in element.elements])
-    
-    if not best_element:
-        raise ValueError(f"No element found at line {line} in file {path}")
-    
-    # Call view_element with the found identifier
-    return view_element(state, settings, path, best_element.identifier)

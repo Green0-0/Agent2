@@ -48,7 +48,7 @@ def test_replace_lines_reindent_enabled(agent_state, tool_settings):
     agent_state.workspace = [file]
     tool_settings.reindent_outputs = True
     replace_lines_with(agent_state, tool_settings, "test.py", 1, 1, "return True")
-    assert file.updated_content == "def foo():\n    return True"
+    assert file.content == "def foo():\n    return True"
 
 def test_replace_lines_path_normalization(agent_state, tool_settings):
     file = agent_state.workspace[0]
@@ -60,14 +60,14 @@ def test_replace_block_with_single_line(agent_state, tool_settings):
     file = File("test.py", "def foo():\n    pass")
     agent_state.workspace = [file]
     replace_block_with(agent_state, tool_settings, "test.py", "def foo():", "def foo(param):")
-    assert file.updated_content.splitlines()[0] == "def foo(param):"
+    assert file.content.splitlines()[0] == "def foo(param):"
 
 def test_replace_block_with_multi_line():
     file = File("test.py", "def foo():\n    pass")
     state = AgentState(None, [file])
     settings = ToolSettings()
     replace_block_with(state, settings, "test.py", "def foo():\n    pass", "def bar():\n    return")
-    assert file.updated_content == "def bar():\n    return"
+    assert file.content == "def bar():\n    return"
 
 def test_replace_block_with_not_found(agent_state, tool_settings):
     with pytest.raises(ValueError, match="Block not found"):
@@ -90,7 +90,7 @@ def test_replace_block_using_last_code_block():
     state = AgentState(None, [file])
     state.last_code_block = "def foo(param):"
     replace_block(state, ToolSettings(), "test.py", "def foo():")
-    assert file.updated_content == "def foo(param):"
+    assert file.content == "def foo(param):"
 
 def test_replace_block_no_last_code_block(agent_state, tool_settings):
     agent_state.last_code_block = None
@@ -102,7 +102,7 @@ def test_diff_generation():
     original = "line1\nline2\nline3"
     updated = "line1\nmodified\nline3"
     file = File("test.txt", original)
-    file.updated_content = updated
+    file.content = updated
     diff = file.diff(None)
     assert "modified" in diff and "line2" in diff
 
@@ -110,4 +110,4 @@ def test_path_normalization_in_functions(agent_state, tool_settings):
     file = File("test.txt", "content")
     agent_state.workspace = [file]
     replace_lines_with(agent_state, tool_settings, "./test.txt", 0, 0, "new_content")
-    assert file.updated_content == "new_content"
+    assert file.content == "new_content"

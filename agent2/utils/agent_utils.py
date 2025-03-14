@@ -5,24 +5,22 @@ from agent2.agent.agent import Agent
 from agent2.agent.tool_formatter import XMLToolFormatter, JSONToolFormatter, MarkdownToolFormatter, CodeACTToolFormatter
 from agent2.agent.tool_settings import ToolSettings
 from agent2.agent.tool import Tool
-from agent2.tools_common.basic_tools.basic_editing import replace_lines, replace_block
-from agent2.tools_common.element_tools.element_editing import replace_element, replace_element_at, open_element, open_element_at
-from agent2.tools_common.element_tools.element_viewing import view_element, search_elements, view_file, view_element_at
-from agent2.tools_common.basic_tools.basic_viewing import view_lines, view_file_raw, search_files
+from agent2.tools_common.input_tools.searching import search
+from agent2.tools_common.input_tools.viewing import view_element, view_element_at, view_file, view_file_raw, view_lines
+from agent2.tools_common.output_tools.editing import replace_lines, replace_block, replace_element, replace_element_at, open_element, open_element_at
 
 tools_list = [Tool(replace_lines), 
               Tool(replace_block), 
+              Tool(replace_element),
+              Tool(replace_element_at),
+              Tool(open_element),
+              Tool(open_element_at),
               Tool(view_lines), 
-              Tool(search_files), 
               Tool(view_file), 
               Tool(view_file_raw), 
               Tool(view_element), 
               Tool(view_element_at),
-              Tool(search_elements), 
-              Tool(open_element),
-              Tool(open_element_at),
-              Tool(replace_element),
-              Tool(replace_element_at),
+              Tool(search)
               ]
 
 def save_agent_to_json(agent: Agent, file_path: str):
@@ -43,6 +41,7 @@ def save_agent_to_json(agent: Agent, file_path: str):
             "tool_start": agent.tool_formatter.tool_start,
             "tool_end": agent.tool_formatter.tool_end
         },
+        "decay_speed": agent.decay_speed,
         "tool_settings": vars(agent.tools_settings),
         "selected_tools": [tool.name for tool in agent.tools_list],
         "prompt_templates": {
@@ -101,5 +100,6 @@ def load_agent_from_json(file_path: str) -> Agent:
         tool_response_wrapper=config['prompt_templates']['response_wrapper'],
         tool_not_found_error_wrapper=config['prompt_templates']['not_found_error'],
         tool_wrong_arguments_error_wrapper=config['prompt_templates']['wrong_args_error'],
-        tool_miscellaneous_error_wrapper=config['prompt_templates']['misc_error']
+        tool_miscellaneous_error_wrapper=config['prompt_templates']['misc_error'],
+        decay_speed=config['decay_speed']
     )

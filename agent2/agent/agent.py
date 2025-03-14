@@ -10,6 +10,7 @@ from agent2.agent.tool_formatter import CodeACTToolFormatter
 from agent2.utils.utils import get_first_import_block
 from agent2.agent.smolagents.local_python_executor import LocalPythonInterpreter
 import functools
+import ast
 
 class AgentResponse():
     def __init__(self, openai_completion: str, error: str = None, dangerous: str = None, done: str = None, tool_response_debug_text: str = None):
@@ -44,7 +45,10 @@ class Agent():
 
     finish_tools = []
 
-    def __init__(self, system_prompt: str, init_message: str, tools_list: List[Tool], tool_formatter: ToolFormatter, tools_settings: ToolSettings, tool_response_wrapper: str, tool_not_found_error_wrapper: str, tool_wrong_arguments_error_wrapper: str, tool_miscellaneous_error_wrapper: str):
+    decay_clock = 0
+    decay_speed = 0
+
+    def __init__(self, system_prompt: str, init_message: str, tools_list: List[Tool], tool_formatter: ToolFormatter, tools_settings: ToolSettings, tool_response_wrapper: str, tool_not_found_error_wrapper: str, tool_wrong_arguments_error_wrapper: str, tool_miscellaneous_error_wrapper: str, decay_speed: int):
         """
         All messages:
             * {{tools_list}} - String formatted list of avaliable tools
@@ -93,27 +97,16 @@ class Agent():
         self.tool_miscellaneous_error_wrapper = tool_miscellaneous_error_wrapper
 
         self.finish_tools = []
+
+        self.decay_clock = 0
+        self.decay_speed = decay_speed
         pass
 
     def perform_substitutions(self, message: str, task:str = None, tool_name:str = None, closest_match:str = None, wrong_arguments:str = None, missing_args:str = None, unrecognized_args:str = None, error_message:str = None, tool_response:str = None):
         elements_text = []
         import_blocks_saved_for_files = []
-        self.cached_state.saved_elements.sort()
-        for file_path, element_id in self.cached_state.saved_elements:
-            # Find the element
-            file = next((f for f in self.cached_state.workspace if f.path.lower() == file_path.lower()), None)
-            if not file:
-                continue
-            all_elements = []
-            stack = list(file.elements)
-            while stack:
-                element = stack.pop()
-                all_elements.append(element)
-                stack.extend(element.elements)
-            
-            element = next((e for e in all_elements if e.identifier.lower() == element_id.lower()), None)
-            if not element:
-                continue
+        self.cached_state.saved_elements.sort(key=lambda x: x[1].identifier)
+        for file, element in self.cached_state.saved_elements:
             elements_text += [file.path + ":" + element.identifier]
             elements_text += ["```python"]
             if self.get_import_block_saved:
@@ -174,6 +167,7 @@ class Agent():
         return message
 
     def start(self, task: str, files: List[File] = [], copy_saved_elements = None):
+        self.decay_clock = 0
         self.cached_state = AgentState(None, files)
         if copy_saved_elements is not None:
             self.cached_state.saved_elements = copy_saved_elements 
@@ -191,6 +185,10 @@ class Agent():
     def step(self, response_str : str):
         if self.frozen:
             return None
+        self.decay_clock += self.decay_speed
+        while self.decay_clock >= 1:
+            self.decay_clock -= 1
+            self.cached_state.chat.decay()
         response_trimmed = response_str.split(self.tool_formatter.tool_end)[0]
         response_parts = response_trimmed.split(self.tool_formatter.tool_start)
         if self.bound_tool is not None:
@@ -202,7 +200,7 @@ class Agent():
                 print("==== TOOL RESPONSE: ====")
                 print(tool_response[0])
                 self.cached_state.chat.append(response_str)
-                self.bound_tool = tool_response[2]
+                self.bound_tool = tool_response[1]
                 return AgentResponse(self.cached_state.chat.toOAI(), None, None, None, response_str)
             except Exception as e:
                 error_msg = self.perform_substitutions(self.tool_miscellaneous_error_wrapper, tool_name=self.bound_tool.func.__name__, error_message=str(e))
@@ -244,7 +242,7 @@ class Agent():
                     # Define a wrapper to update self.bound_tool and return the first element
                     def wrapped_tool(*args, _pt=partial_tool, **kwargs):
                         result = _pt(*args, **kwargs)  # Call the partial tool
-                        self.bound_tool = result[2]    # Set the 4th element (index 3)
+                        self.bound_tool = result[1]    # Set the 4th element (index 3)
                         return result[0]               # Return the first element (index 0)
                     
                     # Add the wrapped tool to executable_tools
@@ -252,9 +250,9 @@ class Agent():
                 pythonInterpreter = LocalPythonInterpreter([], executable_tools)
                 execution_result = pythonInterpreter(tool_call, {})[0]
                 print("==== TOOL RESPONSE ====")
-                print("```output\n" + execution_result + "```")
-                self.cached_state.chat.append("```output\n" + execution_result + "```")
-                return AgentResponse(self.cached_state.chat.toOAI(), None, None, None, "```output\n" + execution_result + "```")
+                print("```output\n" + execution_result + "\n```")
+                self.cached_state.chat.append("```output\n" + execution_result + "\n```")
+                return AgentResponse(self.cached_state.chat.toOAI(), None, None, None, "```output\n" + execution_result + "\n```")
             except Exception as e:
                 error_output = "```output\n" + str(e) + "\n```"
                 if "def" in tool_call or "class" in tool_call:
@@ -306,7 +304,7 @@ class Agent():
             print(tool_response[0])
             response_true = self.perform_substitutions(self.tool_response_wrapper, tool_name=tool_call["name"], tool_response=tool_response[0])
             self.cached_state.chat.append(response_true)
-            self.bound_tool = tool_response[2]
+            self.bound_tool = tool_response[1]
             return AgentResponse(self.cached_state.chat.toOAI(), None, None, None, response_true)
         except Exception as e:
             error_msg = self.perform_substitutions(self.tool_miscellaneous_error_wrapper, tool_name=tool_name, error_message=str(e))

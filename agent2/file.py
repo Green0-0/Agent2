@@ -8,7 +8,7 @@ class File:
     path: str
     extension: str
     original_content: str
-    updated_content: str
+    content: str
     elements: List[Element]
 
     def __init__(self, path: str, content: str):
@@ -26,7 +26,7 @@ class File:
         else:
             self.extension = "Unknown"
         self.original_content = content
-        self.updated_content = content
+        self.content = content
         self.elements = []
         self.update_elements()
 
@@ -45,7 +45,7 @@ class File:
             embeddings_current[element.content] = element.embedding
         
         # Parse updated content
-        self.elements = parse_code(self.updated_content, self.extension)
+        self.elements = parse_code(self.content, self.extension)
 
         # Match new elements to old elements
         for element in self.elements:
@@ -59,7 +59,7 @@ class File:
         Returns:
             str: Unified diff string showing changes
         """
-        if not self.updated_content:
+        if not self.content:
             return ""
         if root:
             total_path = f"{root}/{self.path}"
@@ -67,7 +67,7 @@ class File:
             total_path = self.path
         diff = difflib.unified_diff(
             self.original_content.splitlines(),
-            self.updated_content.splitlines(),
+            self.content.splitlines(),
             fromfile= f"a/{total_path}",
             tofile= f"b/{total_path}",
             lineterm=''
@@ -76,7 +76,7 @@ class File:
     
     def to_string(self, unindent_text = True, number_lines = True):
         if unindent_text:
-            content = unindent(self.updated_content)
+            content = unindent(self.content)
         lines = content.split('\n')
         if number_lines:
             lines = [f"{i} {line}" for i, line in enumerate(lines)]

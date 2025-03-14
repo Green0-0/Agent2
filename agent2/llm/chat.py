@@ -3,7 +3,7 @@ class Chat:
     messages: list[str] # list of messages in this chat
     max_retrieves: int # Number of messages to retrieve on toOAI
 
-    def __init__(self, message : str = "", system_prompt = "", max_retrieves : int = 40):
+    def __init__(self, message : str = "", system_prompt = "", max_retrieves : int = 60):
         """
         Create a new chat with an optional starting message and an optional system prompt.
 
@@ -45,6 +45,9 @@ class Chat:
             oai_messages.pop(0)
             oai_messages.pop(0)
         return oai_messages
+    
+    def decay():
+        pass
     
     def __str__(self):
         """

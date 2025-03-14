@@ -20,45 +20,6 @@ def extract_all_code_blocks(text: str) -> List[str]:
             code = ''
         code_blocks.append(code)
     return code_blocks
-
-def get_overlaps(line_start: int, line_end: int, file: File) -> List[Element]:
-    overlapping_elements = []
-    
-    def collect_overlapping(elements: List[Element]):
-        for element in elements:
-            content_lines = element.content.split('\n')
-            element_line_count = len(content_lines)
-            e_start = element.line_start
-            e_end = e_start + element_line_count - 1
-            if e_start <= line_end and e_end >= line_start:
-                overlapping_elements.append(element)
-                collect_overlapping(element.elements)
-    
-    collect_overlapping(file.elements)
-    
-    exception_candidates = []
-    for elem in overlapping_elements:
-        if not elem.elements:
-            content_lines = elem.content.split('\n')
-            e_line_count = len(content_lines)
-            e_start = elem.line_start
-            e_end = e_start + e_line_count - 1
-            overlap_start = max(e_start, line_start)
-            overlap_end = min(e_end, line_end)
-            if overlap_start > overlap_end:
-                continue
-            overlap_lines = overlap_end - overlap_start + 1
-            if overlap_lines >= 4:
-                pre_lines = max(0, line_start - e_start)
-                post_lines = max(0, e_end - line_end)
-                if pre_lines <= 2 and post_lines <= 2:
-                    exception_candidates.append(elem)
-    
-    if exception_candidates:
-        deepest = max(exception_candidates, key=lambda x: len(x.identifier.split('.')))
-        return [deepest]
-    else:
-        return overlapping_elements
     
 # Assume this function is implemented to interface with your LLM API
 def get_completion(oai_messages, timeout_duration : int = 120, max_retries : int = 5, api_url : str = "https://api.mistral.ai/v1", api_key : str = os.environ.get("API_KEY"), model : str = "mistral-small-2501") -> str:  
