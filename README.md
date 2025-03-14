@@ -74,7 +74,9 @@ PRs are accepted! In particular, support for more languages is needed, currently
 
 # Updates:
 3/14/25 - v0.03 Improved viewing and editing tools, unified all searching tools
-3/10/25 - v0.02 Finish tools, open_element_at, more examples, slight tool changes, depreciated codeblock cache based tools because they were garbage
+
+3/10/25 - v0.02 Finish tools, open_element_at, more examples, slight tool changes, depreciated codeblock cache based tools
+
 3/2/25 - v0.01 Preview is ready... 
 
 If this repo has helped you, give it a star!
